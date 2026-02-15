@@ -19,8 +19,8 @@ Simulación del juego *Among Us* implementada en Java utilizando Swing y una arq
 ### Desde la Terminal
 1.  **Clonar el repositorio**:
     ```bash
-    git clone https://github.com/tu-usuario/AmongUsProject.git
-    cd AmongUsProject
+    git clone https://github.com/Abraham-Orta/Among-Us-TP3.git
+    cd Among-Us-TP3
     ```
 
 2.  **Compilar**:
@@ -57,4 +57,4 @@ src/main/java/com/amongus/project/
 - **Mouse**: Interactuar con tareas y menús.
 
 ## 👥 Créditos
-Desarrollado por [Tu Nombre / Equipo] para la asignatura de Técnicas de Programación III.
+Desarrollado por Abraham Orta, Samuel Silva y Cristobal para la asignatura de Técnicas de Programación III.
