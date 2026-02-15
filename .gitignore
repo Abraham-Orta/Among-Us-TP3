@@ -1,0 +1,47 @@
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.ear
+
+# NetBeans specific
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# IDE specific
+.idea/
+*.iml
+*.iws
+.project
+.classpath
+.settings/
+*.sublime-workspace
+
+# Mac OS X
+.DS_Store
+
+# Maven
+target/
+
+# IntelliJ
+out/
+
+# Local Data
+historial_partidas.xml
