@@ -11,10 +11,12 @@ public class EstadoJuego {
     // Estados del juego
     public enum Fase { MENU, LOBBY, JUGANDO, VOTACION, FINALIZADO }
     private Fase faseActual;
+    private Mapa mapa;
 
     private EstadoJuego() {
         jugadores = new ArrayList<>();
         faseActual = Fase.MENU;
+        mapa = new Mapa();
     }
 
     public static synchronized EstadoJuego getInstancia() {
@@ -43,4 +45,6 @@ public class EstadoJuego {
     
     public Fase getFaseActual() { return faseActual; }
     public void setFaseActual(Fase f) { this.faseActual = f; }
+    
+    public Mapa getMapa() { return mapa; }
 }

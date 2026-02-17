@@ -3,38 +3,22 @@ package com.amongus.project.modelo;
 import java.awt.Color;
 import java.awt.Rectangle;
 
-public class Jugador {
+public class Jugador extends Personaje {
     private String nombre;
-    private int x, y;
     private Color color;
-    private int velocidad = 5;
     private boolean impostor;
     private boolean vivo = true;
-    // Hitbox para colisiones
-    private Rectangle hitbox;
 
     public Jugador(String nombre, int x, int y, Color color, boolean impostor) {
+        super(x, y, 5); // Velocidad por defecto 5
         this.nombre = nombre;
-        this.x = x;
-        this.y = y;
         this.color = color;
         this.impostor = impostor;
-        this.hitbox = new Rectangle(x, y, 30, 50); // Tamaño aproximado
     }
 
-    public void mover(int dx, int dy) {
-        this.x += dx * velocidad;
-        this.y += dy * velocidad;
-        actualizarHitbox();
-    }
-
-    private void actualizarHitbox() {
-        hitbox.setLocation(x, y);
-    }
+    // El método mover y actualizarHitbox ahora se heredan de Personaje
     
-    // Getters y Setters
-    public int getX() { return x; }
-    public int getY() { return y; }
+    // Getters y Setters específicos de Jugador
     public Color getColor() { return color; }
     public String getNombre() { return nombre; }
     public boolean isImpostor() { return impostor; }

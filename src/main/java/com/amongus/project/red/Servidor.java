@@ -136,4 +136,23 @@ public class Servidor { // Clase publica del servidor
         System.out.println("Datos guardados en el XML.");
     }
 
+    // Metodo para enviar lista actualizada de jugadores a todos
+    public static void enviarListaJugadores() {
+        StringBuilder lista = new StringBuilder("LISTA_JUGADORES:");
+        
+        for (int i = 0; i < listaJugadores.size(); i++) {
+            AtencionJugador jugador = listaJugadores.get(i);
+            String nombre = jugador.getNombreJugador();
+            if (nombre != null) {
+                lista.append(nombre);
+                if (i < listaJugadores.size() - 1) {
+                    lista.append(",");
+                }
+            }
+        }
+        
+        System.out.println("Enviando lista: " + lista.toString());
+        enviarATodos(lista.toString());
+    }
+
 } // Fin de la clase Servidor

@@ -62,6 +62,9 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     
                     // Le avisamos a TODOS que entro alguien nuevo
                     Servidor.enviarATodos("CHAT:El jugador " + this.nombreJugador + " ha entrado a la nave.");
+                    
+                    // Enviar lista actualizada de jugadores
+                    Servidor.enviarListaJugadores();
                 }
                 // Si el mensaje empieza con "MOVER:" (Ej: MOVER:10,20)
                 else if (lineaRecibida.startsWith("MOVER:")) {
@@ -98,6 +101,9 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
             Servidor.listaJugadores.remove(this); 
             System.out.println("Jugador eliminado de la lista"); // Log
             
+            // Enviar lista actualizada
+            Servidor.enviarListaJugadores();
+            
             try { // Intentamos cerrar el socket bien
                 socketJugador.close(); // Cerramos conexion
             } catch (IOException e) { // Si falla al cerrar
@@ -112,5 +118,10 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     public void enviarMensaje(String mensaje) { // Recibe el texto
         salida.println(mensaje); // Lo manda por el canal de salida
     } // Fin enviarMensaje
+
+    // Metodo para obtener el nombre del jugador
+    public String getNombreJugador() {
+        return nombreJugador;
+    }
 
 } // Fin de la clase

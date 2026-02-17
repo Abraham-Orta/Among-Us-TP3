@@ -6,12 +6,20 @@ import java.awt.*; // Componentes AWT (Color, Font, Graphics, etc.)
 import java.io.File; // Para manejo de archivos del sistema
 import java.io.InputStream; // Para leer flujos de datos
 import javax.imageio.ImageIO; // Para leer imágenes (JPG, PNG, etc.)
+import com.amongus.project.controlador.BucleJuego; // Logica del bucle de juego
+import com.amongus.project.vista.PanelJuego; // Panel donde se dibuja el juego
+import com.amongus.project.red.Cliente; // Cliente de red
 
 /**
  * PantallaSeleccionModo
  * Pantalla para elegir entre modo Local o En Línea.
  */
 public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventana principal
+
+    /**
+     * Constructor: Configura la ventana al iniciar.
+     */
+    private static boolean servidorIniciado = false; // Control para no abrir el servidor dos veces
 
     /**
      * Constructor: Configura la ventana al iniciar.
@@ -79,23 +87,47 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         JButton btnOnline = crearBotonEstiloAmongUs("En Linea"); // Crea botón con texto "En Linea"
         btnOnline.setAlignmentX(Component.CENTER_ALIGNMENT); // Centra horizontalmente
 
-        // Aqui se agrega elementos (online)
+        // Agregar elementos Online
         panelOnline.add(imgOnline); // Añade imagen
         panelOnline.add(Box.createVerticalStrut(20)); // Espacio vertical de 20 píxeles
         panelOnline.add(btnOnline); // Añade botón
+
+        // parte de "Unirse a Partida"
+        JPanel panelUnirse = new JPanel(); // Panel para opción Unirse
+        panelUnirse.setOpaque(false); // Transparente
+        panelUnirse.setLayout(new BoxLayout(panelUnirse, BoxLayout.Y_AXIS)); // Disposición vertical
+
+        // Imagen Unirse (usamos la misma de En Linea)
+        JLabel imgUnirse = crearEtiquetaImagen("imagenEnLinea.png", 320, 220);
+        imgUnirse.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // Botón Unirse
+        JButton btnUnirse = crearBotonEstiloAmongUs("Unirse a Partida");
+        btnUnirse.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // Agregar elementos Unirse
+        panelUnirse.add(imgUnirse);
+        panelUnirse.add(Box.createVerticalStrut(20));
+        panelUnirse.add(btnUnirse);
 
         // aqui para unir los paneles
         GridBagConstraints gbc = new GridBagConstraints(); // Objeto para configurar posición en GridBagLayout
 
         // Configuración Izquierda
         gbc.gridx = 0; // Columna 0 (primera columna)
-        gbc.insets = new Insets(0, 0, 0, 50); // Margen derecho de 50 pixeles
+        gbc.gridy = 0; // Fila 0
+        gbc.insets = new Insets(0, 0, 0, 30); // Margen derecho de 30 pixeles
         panelCentral.add(panelLocal, gbc); // Añade panel Local
 
-        // Configuración Derecha
+        // Configuración Centro
         gbc.gridx = 1; // Columna 1 (segunda columna)
-        gbc.insets = new Insets(0, 50, 0, 0); // Margen izquierdo de 50 píxeles
+        gbc.insets = new Insets(0, 30, 0, 30); // Margen izquierdo y derecho de 30 píxeles
         panelCentral.add(panelOnline, gbc); // Añade panel Online
+
+        // Configuración Derecha
+        gbc.gridx = 2; // Columna 2 (tercera columna)
+        gbc.insets = new Insets(0, 30, 0, 0); // Margen izquierdo de 30 píxeles
+        panelCentral.add(panelUnirse, gbc); // Añade panel Unirse
 
         // Agregar al fondo
         panelFondo.add(panelCentral, BorderLayout.CENTER); // Añade panel central en zona centro
@@ -292,14 +324,11 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
                     // Crea el cliente de red (el telefono para hablar con el server)
                     com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente();
                     
-                    // primero presenta ante el servidor
-                    cliente.enviarMensaje("CONECTAR:" + nombre);
+                    // Esperar un momento para que el cliente se conecte
+                    try { Thread.sleep(500); } catch (InterruptedException ex) {}
                     
-                    // Aviso de que que todo salio bien
-                    JOptionPane.showMessageDialog(this, "¡Conectado! Mira la consola del Servidor.");
-                    
-                    // NOTA: Aqui mas adelante tendriamos que cerrar esta ventana y abrir el mapa ( parte de cristobal)
-                    // dispose();
+                    // Abrir lobby y enviar mensaje de conexión
+                    abrirLobby(nombre, false, cliente, "CONECTAR:" + nombre);
                 }
             });
         } else if (txt.equals("Local")) {
@@ -310,31 +339,86 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
                     
                     // En Local, nosotros somos el servidor.
                     // Creamos un hilo para arrancar el servidor en segundo plano
-                    new Thread(() -> {
-                        try {
-                            // Llamamos al main del Servidor
-                            com.amongus.project.red.Servidor.main(new String[]{});
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    }).start();
+                    if (!servidorIniciado) {
+                        new Thread(() -> {
+                            try {
+                                // Llamamos al main del Servidor
+                                com.amongus.project.red.Servidor.main(new String[]{});
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }).start();
+                        servidorIniciado = true;
+                        
+                        // Esperamos a que el servidor arranque bien
+                        try { Thread.sleep(1000); } catch (InterruptedException ex) {}
+                    }
                     
                     // Esperamos  a que el servidor arranque bien
                     try { Thread.sleep(1000); } catch (InterruptedException ex) {}
                     
                     // nos conectamos a nosotros mismos (localhost)
                     com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente();
-                    cliente.enviarMensaje("CONECTAR:" + nombre + " (Host)");
                     
-                    JOptionPane.showMessageDialog(this, "¡Servidor Local Creado! Esperando jugadores...");
+                    // Esperar conexión
+                    try { Thread.sleep(500); } catch (InterruptedException ex) {}
+                    
+                    // Abrir lobby y enviar mensaje
+                    abrirLobby(nombre + " (Host)", true, cliente, "CONECTAR:" + nombre + " (Host)");
                 }
             });
-            
+        } else if (txt.equals("Unirse a Partida")) {
+            // Unirse a partida existente
+            b.addActionListener(e -> {
+                // Pedir código de sala
+                String codigo = JOptionPane.showInputDialog(this, "Ingresa el código de la sala:");
+                
+                if (codigo != null && !codigo.trim().isEmpty()) {
+                    // Validar formato (6 caracteres alfanuméricos)
+                    codigo = codigo.trim().toUpperCase();
+                    if (!codigo.matches("[A-Z0-9]{6}")) {
+                        JOptionPane.showMessageDialog(this, 
+                            "Código inválido. Debe tener 6 caracteres (letras y números).", 
+                            "Error", 
+                            JOptionPane.ERROR_MESSAGE);
+                        return;
+                    }
+                    
+                    // Pedir nombre
+                    String nombre = JOptionPane.showInputDialog(this, "Ingresa tu nombre de tripulante:");
+                    
+                    if (nombre != null && !nombre.trim().isEmpty()) {
+                        // Conectar al servidor
+                        com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente();
+                        
+                        // Esperar conexión
+                        try { Thread.sleep(500); } catch (InterruptedException ex) {}
+                        
+                        // Abrir lobby y enviar mensaje
+                        abrirLobby(nombre, false, cliente, "CONECTAR:" + nombre + " (Código: " + codigo + ")");
+                    }
+                }
+            });
         } else {
             // Accion por defecto para los otros botones (Atras) que aun no tienen logica PARA ABRAHAM
             b.addActionListener(e -> JOptionPane.showMessageDialog(this, "Modo: " + txt)); 
         }
         
         return b; // Retorna el botón creado
+    }
+
+    private void abrirLobby(String nombre, boolean esHost, Cliente cliente, String mensajeInicial) {
+        // Cierra la ventana de seleccion
+        dispose();
+        
+        // Abre la ventana de lobby
+        SwingUtilities.invokeLater(() -> {
+            PantallaLobby lobby = new PantallaLobby(nombre, esHost, cliente);
+            lobby.setVisible(true);
+            
+            if (cliente != null && mensajeInicial != null) {
+                cliente.enviarMensaje(mensajeInicial);
+            }
+        });
     }
 }

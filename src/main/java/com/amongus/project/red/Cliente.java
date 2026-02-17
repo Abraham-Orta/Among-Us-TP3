@@ -12,9 +12,15 @@ import java.net.Socket; // El enchufe de conexion
  */
 public class Cliente extends Thread { // Hereda de Thread para escuchar sin trabar el juego
 
+    // Interfaz para notificar mensajes a quien escuche
+    public interface MensajeListener {
+        void onMensajeRecibido(String mensaje);
+    }
+
     private Socket socket; // El cable de red virtual
     private BufferedReader entrada; // Por aqui escuchamos al servidor
     private PrintWriter salida; // Por aqui le hablamos al servidor
+    private MensajeListener listener; // Quien escucha los mensajes
     
     // Constructor: Se intenta conectar apenas creamos el objeto
     public Cliente() {
@@ -48,6 +54,11 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
         }
     }
 
+    // Metodo para registrar quien escucha los mensajes
+    public void setMensajeListener(MensajeListener listener) {
+        this.listener = listener;
+    }
+
     // Este metodo corre en fondo escuchando lo que dice el servidor
     @Override
     public void run() {
@@ -58,9 +69,10 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
                 
                 System.out.println("SERVIDOR DIJO: " + mensajeRecibido);
                 
-                // AQUI MAS ADELANTE PONDREMOS LA LOGICA DEL JUEGO
-                // Ejemplo: Si llega "MOVER:Juan,10,10", movemos el muñeco de Juan.
-                // Por ahora solo lo imprimimos en consola.
+                // Notificar al listener si existe
+                if (listener != null) {
+                    listener.onMensajeRecibido(mensajeRecibido);
+                }
                 
             }
         } catch (Exception e) {
