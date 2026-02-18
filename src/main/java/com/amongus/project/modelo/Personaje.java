@@ -1,42 +1,58 @@
 package com.amongus.project.modelo;
 
 import java.awt.Rectangle;
-import com.amongus.project.modelo.EstadoJuego;
 
-public abstract class Personaje {
+public class Personaje {
     protected int x, y;
     protected int velocidad;
     protected Rectangle hitbox;
-    // Dirección: -1 izquierda, 1 derecha, 0 quieto (opcional para futuras animaciones)
-    protected int direccion;
+    // Dirección: -1 izquierda, 1 derecha, 0 quieto
+    protected int direccion = 1; // Default derecha
 
     public Personaje(int x, int y, int velocidad) {
         this.x = x;
         this.y = y;
         this.velocidad = velocidad;
-        this.hitbox = new Rectangle(x, y, 30, 50); // Tamaño por defecto, ajustable
+        this.hitbox = new Rectangle(x, y, 30, 40); // Hitbox un poco más pequeña
     }
 
-    public void mover(int dx, int dy) {
-        if (dx != 0) {
-            this.direccion = dx > 0 ? 1 : -1;
-        }
+    /**
+     * Mueve al personaje en la dirección especificada por dx y dy.
+     * @param vx Velocidad en X (puede ser negativo)
+     * @param vy Velocidad en Y (puede ser negativo)
+     */
+    public void mover(int vx, int vy) {
+        // Actualizar dirección visual (Sprite flip)
+        if (vx > 0) direccion = 1;
+        if (vx < 0) direccion = -1;
 
         // Calcular nueva posición propuesta
-        int nuevoX = this.x + (dx * velocidad);
-        int nuevoY = this.y + (dy * velocidad);
+        int nuevoX = this.x + vx;
+        int nuevoY = this.y + vy;
         
-        // Crear rectángulo de la nueva posición
+        // --- COLISIONES BÁSICAS (Límites del mapa provisionales) ---
+        // Esto evita que se salga de la pantalla por ahora (0,0 hasta 800,600 aprox)
+        // Luego lo conectaremos con la clase Mapa real
+        if (nuevoX < 0) nuevoX = 0;
+        if (nuevoY < 0) nuevoY = 0;
+        // Asumimos un mundo grande por ahora
+        
+        // Validar colisión con Mapa si existe
         Rectangle hitboxFutura = new Rectangle(nuevoX, nuevoY, hitbox.width, hitbox.height);
-
-        // Verificar colisión con el mapa
         Mapa mapa = EstadoJuego.getInstancia().getMapa();
-        if (mapa != null && !mapa.hayColision(hitboxFutura)) {
-            // Si no hay colisión, mover
+        
+        if (mapa != null) {
+            if (!mapa.hayColision(hitboxFutura)) {
+                this.x = nuevoX;
+                this.y = nuevoY;
+            }
+        } else {
+            // Si no hay mapa cargado, mover libremente
             this.x = nuevoX;
             this.y = nuevoY;
-            actualizarHitbox();
         }
+
+        actualizarHitbox();
     }
 
     protected void actualizarHitbox() {
