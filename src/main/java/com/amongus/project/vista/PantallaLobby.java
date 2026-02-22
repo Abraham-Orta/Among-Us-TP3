@@ -148,11 +148,11 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private void iniciarPartida() {
         // Enviar mensaje al servidor para iniciar
         if (cliente != null) {
-            cliente.enviarMensaje("INICIAR_PARTIDA");
+            cliente.enviarMensaje("COMANDO:INICIAR");
         }
         
-        // Abrir ventana de juego
-        abrirJuego();
+        // No abrimos el juego directamente. Esperamos a que el servidor nos confirme con "JUEGO_INICIADO"
+        // para que todos entremos al mismo tiempo.
     }
     
     public void abrirJuego() {

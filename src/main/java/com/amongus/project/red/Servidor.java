@@ -88,24 +88,29 @@ public class Servidor { // Clase publica del servidor
     public static void iniciarPartida() { // Metodo estatico
         System.out.println("Intentando iniciar partida..."); // Log
         
-        // Requisito del PDF: Minimo 5 jugadores para iniciar
-        if (listaJugadores.size() < 5) { 
-            System.out.println("Hay muy poca gente para jugar (Minimo 5)"); // Aviso
-            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 5).");
+        // Requisito del PDF: Minimo 5 jugadores para iniciar.
+        // CAMBIO TEMPORAL: Bajamos a 2 para pruebas locales
+        if (listaJugadores.size() < 2) { 
+            System.out.println("Hay muy poca gente para jugar (Minimo 2)"); // Aviso
+            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 2).");
             return; // Salimos del metodo, no arranca
         }
         
         // Requisito del PDF: Asignar DOS impostores
         // Elegimos dos numeros al azar diferentes
         int impostor1 = (int) (Math.random() * listaJugadores.size());
-        int impostor2 = (int) (Math.random() * listaJugadores.size());
+        int impostor2 = -1;
         
-        // Si por mala suerte salio el mismo numero, cambiamos el segundo hasta que sea distinto
-        while (impostor2 == impostor1) {
+        // Solo asignamos segundo impostor si hay suficientes jugadores (ej. > 3)
+        if (listaJugadores.size() > 3) {
             impostor2 = (int) (Math.random() * listaJugadores.size());
+            // Si por mala suerte salio el mismo numero, cambiamos el segundo hasta que sea distinto
+            while (impostor2 == impostor1) {
+                impostor2 = (int) (Math.random() * listaJugadores.size());
+            }
         }
         
-        System.out.println("Los impostores son los indices: " + impostor1 + " y " + impostor2); // Log secreto
+        System.out.println("Los impostores son los indices: " + impostor1 + (impostor2 != -1 ? " y " + impostor2 : "")); // Log secreto
         
         // Recorremos la lista para avisarles que son
         for (int i = 0; i < listaJugadores.size(); i++) { // Bucle clasico
@@ -119,7 +124,7 @@ public class Servidor { // Clase publica del servidor
             }
         }
         
-        enviarATodos("INICIO:La partida ha comenzado"); // Avisamos a todos que arranca
+        enviarATodos("JUEGO_INICIADO"); // Avisamos a todos que arranca (mensaje estandarizado)
     }
     
     // Metodo para terminar la partida y guardar en el XML

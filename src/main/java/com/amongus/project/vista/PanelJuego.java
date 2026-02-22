@@ -10,23 +10,45 @@ import com.amongus.project.controlador.ManejadorEntrada;
 
 public class PanelJuego extends JPanel {
     
+    private PantallaVotacion pantallaVotacion;
+
     public PanelJuego() {
         setPreferredSize(new Dimension(800, 600));
         setBackground(Color.BLACK);
         setFocusable(true);
+        
+        // Manejo de Teclado
         addKeyListener(new ManejadorEntrada());
+        
+        // Manejo de Ratón
+        ManejadorEntrada.MouseHandler mouseHandler = new ManejadorEntrada.MouseHandler();
+        addMouseListener(mouseHandler);
+        addMouseMotionListener(mouseHandler);
+        
+        // Inicializar pantallas
+        this.pantallaVotacion = new PantallaVotacion();
+    }
+    
+    public PantallaVotacion getPantallaVotacion() {
+        return pantallaVotacion;
     }
     
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         
+        EstadoJuego.Fase fase = EstadoJuego.getInstancia().getFaseActual();
+        
+        if (fase == EstadoJuego.Fase.VOTACION) {
+            pantallaVotacion.render(g);
+            return; // No dibujamos el mapa ni jugadores del juego base en la votación
+        }
+        
         // Dibujar mapa
         if (EstadoJuego.getInstancia().getMapa() != null) {
             EstadoJuego.getInstancia().getMapa().render(g);
         }
         
-        // Dibujar jugadores
         // Dibujar jugadores
         for (Jugador j : EstadoJuego.getInstancia().getJugadores()) {
             dibujarTripulante(g, j);
@@ -48,6 +70,8 @@ public class PanelJuego extends JPanel {
         int y = j.getY();
         // Usamos el tamaño del hitbox como referencia (30x50), pero dibujamos un poco mas grande
         int w = 30;
+      
+      
         int h = 40; // Cuerpo un poco mas bajo para las patas
         
         int dir = j.getDireccion(); // 1 derecha, -1 izquierda, 0 quieto (usar ultimo)

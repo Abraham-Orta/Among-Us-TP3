@@ -68,10 +68,16 @@ public class BucleJuego implements Runnable {
     }
     
     private void actualizar() {
-        // Obtener el jugador local y actualizar su movimiento basado en teclas
-        Jugador jugadorLocal = estado.getJugadorLocal();
-        if (jugadorLocal != null) {
-            jugadorLocal.actualizar();
+        EstadoJuego.Fase fase = estado.getFaseActual();
+        
+        if (fase == EstadoJuego.Fase.VOTACION) {
+            panelJuego.getPantallaVotacion().actualizar();
+        } else if (fase == EstadoJuego.Fase.JUGANDO) {
+             // Obtener el jugador local y actualizar su movimiento basado en teclas
+            Jugador jugadorLocal = estado.getJugadorLocal();
+            if (jugadorLocal != null) {
+                jugadorLocal.actualizar();
+            }
         }
         
         // Aquí podríamos actualizar otros elementos (tareas, timers, otros jugadores interpolados)

@@ -12,6 +12,11 @@ public class Jugador extends Personaje {
     // Variables para control de red (evitar enviar spam de paquetes si no me muevo)
     private int ultimoXEnviado = -1;
     private int ultimoYEnviado = -1;
+    
+    // Variables de Votación
+    private boolean haVotado = false;
+    private boolean votoSkip = false;
+    private Jugador votoJugador = null; // A quién votó este jugador
 
     public Jugador(String nombre, int x, int y, Color color, boolean impostor) {
         super(x, y, 4); // Velocidad base 4 (ajustable)
@@ -19,6 +24,29 @@ public class Jugador extends Personaje {
         this.color = color;
         this.impostor = impostor;
     }
+
+    // Métodos de votación
+    public void resetVoto() {
+        this.haVotado = false;
+        this.votoSkip = false;
+        this.votoJugador = null;
+    }
+    
+    public void votarSkip() {
+        this.haVotado = true;
+        this.votoSkip = true;
+        this.votoJugador = null;
+    }
+    
+    public void votarJugador(Jugador objetivo) {
+        this.haVotado = true;
+        this.votoSkip = false;
+        this.votoJugador = objetivo;
+    }
+    
+    public boolean yaVoto() { return haVotado; }
+    public boolean isVotoSkip() { return votoSkip; }
+    public Jugador getVotoJugador() { return votoJugador; }
 
     // Este método se llama en cada frame del juego (60 veces por segundo)
     public void actualizar() {
