@@ -62,14 +62,14 @@ public class Servidor { // Clase publica del servidor
                 // Iniciamos el hilo para que corra en paralelo y no trabe el servidor
                 nuevoJugador.start(); 
                 
-            } // Fin del while
+            }
             
         } catch (IOException error) { // Si pasa un error atrapamos la excepcion
             System.out.println("Uhh paso un error en el servidor: " + error.getMessage()); // Imprimimos el error
             error.printStackTrace(); // Esto imprime todas las lineas del error
-        } // Fin del catch
+        }
         
-    } // Fin del main
+    }
 
     // Este metodo sirve para enviarle un mensaje a TODOS los jugadores conectados
     public static void enviarATodos(String mensaje) { // Recibe el mensaje en texto
@@ -80,20 +80,19 @@ public class Servidor { // Clase publica del servidor
                 jugador.enviarMensaje(mensaje); // Le mandamos el mensaje a ese jugador
             } catch (Exception e) { // Si falla
                 System.out.println("No se pudo enviar mensaje a uno"); // Avisamos
-            } // Fin catch
-        } // Fin for
-    } // Fin metodo enviarATodos
+            }
+        }
+    }
 
     // Metodo nuevo para asignar roles cuando ya esten todos
     public static void iniciarPartida() { // Metodo estatico
         System.out.println("Intentando iniciar partida..."); // Log
         
         // Requisito del PDF: Minimo 5 jugadores para iniciar.
-        // CAMBIO TEMPORAL: Bajamos a 2 para pruebas locales
-        if (listaJugadores.size() < 2) { 
-            System.out.println("Hay muy poca gente para jugar (Minimo 2)"); // Aviso
-            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 2).");
-            return; // Salimos del metodo, no arranca
+        if (listaJugadores.size() < 5) { // Verifica si hay menos de 5 jugadores
+            System.out.println("Hay muy poca gente para jugar (Minimo 5)"); // Aviso en consola
+            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 5)."); // Avisa a los clientes
+            return; // Salimos del metodo, la partida no arranca
         }
         
         // Requisito del PDF: Asignar DOS impostores
@@ -160,4 +159,4 @@ public class Servidor { // Clase publica del servidor
         enviarATodos(lista.toString());
     }
 
-} // Fin de la clase Servidor
+}

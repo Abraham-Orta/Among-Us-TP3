@@ -33,8 +33,8 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
         } catch (IOException e) { // Si falla algo al abrir canales
             System.out.println("Error al crear los canales del jugador"); // Avisamos
             e.printStackTrace(); // Mostramos el error
-        } // Fin del catch
-    } // Fin del constructor
+        }
+    }
 
     // Este es el metodo que corre cuando le damos .start() al hilo
     @Override
@@ -91,7 +91,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     Servidor.enviarATodos("CHAT:" + this.nombreJugador + ": " + lineaRecibida);
                 }
                 
-            } // Fin del while
+            }
             
         } catch (IOException e) { // Si hay error de conexion (se fue el internet o cerro el juego)
             System.out.println("Parece que el jugador se desconecto: " + e.getMessage()); // Avisamos
@@ -108,20 +108,20 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                 socketJugador.close(); // Cerramos conexion
             } catch (IOException e) { // Si falla al cerrar
                 System.out.println("No se pudo cerrar el socket"); // Da igual, avisamos
-            } // Fin catch
+            }
             
-        } // Fin finally
+        }
         
-    } // Fin del metodo run
+    }
 
     // Metodo auxiliar para enviarle un mensaje a ESTE jugador
     public void enviarMensaje(String mensaje) { // Recibe el texto
         salida.println(mensaje); // Lo manda por el canal de salida
-    } // Fin enviarMensaje
+    }
 
     // Metodo para obtener el nombre del jugador
     public String getNombreJugador() {
         return nombreJugador;
     }
 
-} // Fin de la clase
+}

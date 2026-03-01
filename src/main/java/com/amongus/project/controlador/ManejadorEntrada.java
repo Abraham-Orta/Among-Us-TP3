@@ -11,10 +11,12 @@ public class ManejadorEntrada extends KeyAdapter {
     // Estado de las teclas
     public static boolean arriba = false;
     public static boolean abajo = false;
-    public static boolean izquierda = false;
-    public static boolean derecha = false;
+        public static boolean izquierda = false; // Tecla de movimiento a la izquierda
+        public static boolean derecha = false; // Tecla de movimiento a la derecha
+        public static boolean accionMatar = false; // Tecla E para que el impostor paralice
+        public static boolean accionVentilar = false; // Tecla F para usar la ventilacion (via de acceso rapido)
     
-    // Estado del Ratón
+        // Estado del Ratón
     public static int mouseX = 0;
     public static int mouseY = 0;
     public static boolean clickIzquierdo = false;
@@ -64,7 +66,17 @@ public class ManejadorEntrada extends KeyAdapter {
             izquierda = true;
         }
         if (codigo == KeyEvent.VK_D || codigo == KeyEvent.VK_RIGHT) {
-            derecha = true;
+            derecha = true; // Activa movimiento a la derecha
+        }
+
+        // Tecla de accion para paralizar (E)
+        if (codigo == KeyEvent.VK_E) { // Si se presiona la tecla E
+            accionMatar = true; // Activa la bandera de accion para paralizar
+        }
+
+        // Tecla de accion para ventilar (F)
+        if (codigo == KeyEvent.VK_F) { // Si se presiona la tecla F
+            accionVentilar = true; // Activa la bandera de accion de la via rapida
         }
         
         // Teclas de depuración para probar la votación
@@ -94,7 +106,17 @@ public class ManejadorEntrada extends KeyAdapter {
             izquierda = false;
         }
         if (codigo == KeyEvent.VK_D || codigo == KeyEvent.VK_RIGHT) {
-            derecha = false;
+            derecha = false; // Desactiva movimiento a la derecha
+        }
+
+        // Tecla de accion para paralizar (E)
+        if (codigo == KeyEvent.VK_E) { // Si se suelta la tecla E
+            accionMatar = false; // Desactiva la bandera de accion para paralizar
+        }
+
+        // Tecla de accion para ventilar (F)
+        if (codigo == KeyEvent.VK_F) { // Si se suelta la tecla F
+            accionVentilar = false; // Desactiva la bandera de accion de la via rapida
         }
     }
 }

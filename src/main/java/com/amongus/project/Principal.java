@@ -22,6 +22,6 @@ public class Principal {// Clase pública principal del proyecto
 
             menu.setVisible(true);// Hace visible la ventana del menú principal
             
-        });// Fin de la lambda y del invokeLater
-    }  // Fin del metodo main
-}  // Fin de la clase Principal
+        });
+    }
+}

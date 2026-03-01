@@ -22,7 +22,6 @@ import java.util.Date;
 
 /**
  * GestorDatos
- * ===========
  * Esta clase es el "bibliotecario" del juego.
  * Su único trabajo es guardar en una libreta (archivo XML) quién ganó cada partida.
  * No sabe jugar, solo sabe escribir y leer el historial.
@@ -113,7 +112,7 @@ public class GestorDatos {
             // Preparamos el destino (el archivo en el disco).
             StreamResult resultadoArchivo = new StreamResult(archivoFisico);
             
-            // ¡PUM! Escribimos los cambios.
+            // Escribimos los cambios.
             transformador.transform(fuenteDatos, resultadoArchivo);
 
             // Aviso para nosotros los programadores en la consola.
