@@ -30,18 +30,17 @@ public class Personaje {
         int nuevoX = this.x + vx;
         int nuevoY = this.y + vy;
         
-        // --- COLISIONES BÁSICAS (Límites del mapa provisionales) ---
-        // Esto evita que se salga de la pantalla por ahora (0,0 hasta 800,600 aprox)
-        // Luego lo conectaremos con la clase Mapa real
-        if (nuevoX < 0) nuevoX = 0;
-        if (nuevoY < 0) nuevoY = 0;
-        // Asumimos un mundo grande por ahora
-        
         // Validar colisión con Mapa si existe
-        Rectangle hitboxFutura = new Rectangle(nuevoX, nuevoY, hitbox.width, hitbox.height);
         Mapa mapa = EstadoJuego.getInstancia().getMapa();
         
         if (mapa != null) {
+            // --- LIMITES DEL MAPA ---
+            if (nuevoX < 0) nuevoX = 0;
+            if (nuevoY < 0) nuevoY = 0;
+            if (nuevoX > mapa.getAncho() - hitbox.width) nuevoX = mapa.getAncho() - hitbox.width;
+            if (nuevoY > mapa.getAlto() - hitbox.height) nuevoY = mapa.getAlto() - hitbox.height;
+
+            Rectangle hitboxFutura = new Rectangle(nuevoX, nuevoY, hitbox.width, hitbox.height);
             if (!mapa.hayColision(hitboxFutura)) {
                 this.x = nuevoX;
                 this.y = nuevoY;

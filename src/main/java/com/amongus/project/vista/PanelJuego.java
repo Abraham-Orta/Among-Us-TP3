@@ -2,10 +2,12 @@ package com.amongus.project.vista;
 
 import javax.swing.JPanel;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Color;
 import java.awt.Dimension;
 import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
+import com.amongus.project.modelo.Mapa;
 import com.amongus.project.controlador.ManejadorEntrada;
 
 public class PanelJuego extends JPanel {
@@ -37,20 +39,44 @@ public class PanelJuego extends JPanel {
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
         
-        EstadoJuego.Fase fase = EstadoJuego.getInstancia().getFaseActual();
+        EstadoJuego estado = EstadoJuego.getInstancia();
+        EstadoJuego.Fase fase = estado.getFaseActual();
         
         if (fase == EstadoJuego.Fase.VOTACION) {
             pantallaVotacion.render(g);
-            return; // No dibujamos el mapa ni jugadores del juego base en la votación
+            return; 
         }
         
+        // --- LOGICA DE CAMARA ---
+        int camX = 0;
+        int camY = 0;
+        
+        Jugador local = estado.getJugadorLocal();
+        Mapa mapa = estado.getMapa();
+        
+        if (local != null && mapa != null) {
+            // Centrar al jugador: posJugador - (tamañoPantalla / 2)
+            camX = local.getX() - (getWidth() / 2);
+            camY = local.getY() - (getHeight() / 2);
+            
+            // Limitar cámara a los bordes del mapa
+            if (camX < 0) camX = 0;
+            if (camY < 0) camY = 0;
+            if (camX > mapa.getAncho() - getWidth()) camX = mapa.getAncho() - getWidth();
+            if (camY > mapa.getAlto() - getHeight()) camY = mapa.getAlto() - getHeight();
+        }
+        
+        // Aplicar traslación de cámara (invertida para que el mundo se mueva)
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.translate(-camX, -camY);
+        
         // Dibujar mapa
-        if (EstadoJuego.getInstancia().getMapa() != null) {
-            EstadoJuego.getInstancia().getMapa().render(g);
+        if (mapa != null) {
+            mapa.render(g);
         }
         
         // Dibujar jugadores
-        for (Jugador j : EstadoJuego.getInstancia().getJugadores()) {
+        for (Jugador j : estado.getJugadores()) {
             dibujarTripulante(g, j);
             
             // Nombre encima
@@ -58,8 +84,18 @@ public class PanelJuego extends JPanel {
             g.drawString(j.getNombre(), j.getX(), j.getY() - 10);
         }
         
+        // Dibujar nosotros mismos si no estamos en la lista general (a veces pasa en local)
+        if (local != null && !estado.getJugadores().contains(local)) {
+             dibujarTripulante(g, local);
+             g.setColor(Color.WHITE);
+             g.drawString(local.getNombre(), local.getX(), local.getY() - 10);
+        }
+
+        // Revertir traslación para elementos fijos de la UI (si hubiera)
+        g2d.translate(camX, camY);
+        
         // Mensaje si no hay jugadores
-        if (EstadoJuego.getInstancia().getJugadores().isEmpty()) {
+        if (estado.getJugadores().isEmpty() && local == null) {
             g.setColor(Color.WHITE);
             g.drawString("No hay jugadores. Inicia partida.", 300, 300);
         }
