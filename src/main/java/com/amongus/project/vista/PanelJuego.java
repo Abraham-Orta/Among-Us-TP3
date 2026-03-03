@@ -7,30 +7,75 @@ import java.awt.Dimension;
 import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
 import com.amongus.project.controlador.ManejadorEntrada;
+import com.amongus.project.red.Cliente;
 
-public class PanelJuego extends JPanel {
+public class PanelJuego extends JPanel implements Cliente.MensajeListener {
     
     private PantallaVotacion pantallaVotacion;
+    private ManejadorEntrada manejadorEntrada;
+    private Cliente cliente;
+    private Jugador jugadorLocal; // Referencia propia — no depende del singleton
 
-    public PanelJuego() {
+    public PanelJuego(Cliente cliente, Jugador jugadorLocal) {
+        this.cliente = cliente;
+        this.jugadorLocal = jugadorLocal;
         setPreferredSize(new Dimension(800, 600));
         setBackground(Color.BLACK);
         setFocusable(true);
         
         // Manejo de Teclado
-        addKeyListener(new ManejadorEntrada());
-        
-        // Manejo de Ratón
-        ManejadorEntrada.MouseHandler mouseHandler = new ManejadorEntrada.MouseHandler();
-        addMouseListener(mouseHandler);
-        addMouseMotionListener(mouseHandler);
+        manejadorEntrada = new ManejadorEntrada(this.cliente);
+        addKeyListener(manejadorEntrada);
         
         // Inicializar pantallas
         this.pantallaVotacion = new PantallaVotacion();
+        
+        // Este panel ahora escucha los mensajes del servidor (posiciones de otros jugadores)
+        if (cliente != null) {
+            cliente.setMensajeListener(this);
+        }
     }
     
+    /** Llamado por el Cliente cada vez que llega un mensaje del servidor */
+    @Override
+    public void onMensajeRecibido(String mensaje) {
+        // POSICION:nombre:x:y  — actualizar posición de otro jugador
+        if (mensaje.startsWith("POSICION:")) {
+            String[] partes = mensaje.split(":");
+            if (partes.length < 4) return;
+            String nombre = partes[1];
+            try {
+                int x = Integer.parseInt(partes[2]);
+                int y = Integer.parseInt(partes[3]);
+                // Buscar ese jugador en el estado global y actualizar su posición
+                for (Jugador j : EstadoJuego.getInstancia().getJugadores()) {
+                    if (j.getNombre().equals(nombre) && j != jugadorLocal) {
+                        j.setX(x);
+                        j.setY(y);
+                        break;
+                    }
+                }
+            } catch (NumberFormatException e) {
+                System.out.println("PanelJuego: POSICION mal formada: " + mensaje);
+            }
+        }
+        // Aquí se pueden manejar otros mensajes en juego (FIN, VOTACION, etc.)
+    }
+
     public PantallaVotacion getPantallaVotacion() {
         return pantallaVotacion;
+    }
+
+    public ManejadorEntrada getManejadorEntrada() {
+        return manejadorEntrada;
+    }
+
+    public Jugador getJugadorLocal() {
+        return jugadorLocal;
+    }
+    
+    public Cliente getCliente() {
+        return cliente;
     }
     
     @Override
@@ -41,7 +86,7 @@ public class PanelJuego extends JPanel {
         
         if (fase == EstadoJuego.Fase.VOTACION) {
             pantallaVotacion.render(g);
-            return; // No dibujamos el mapa ni jugadores del juego base en la votación
+            return;
         }
         
         // Dibujar mapa
@@ -49,17 +94,24 @@ public class PanelJuego extends JPanel {
             EstadoJuego.getInstancia().getMapa().render(g);
         }
         
-        // Dibujar jugadores
-        for (Jugador j : EstadoJuego.getInstancia().getJugadores()) {
+        // Dibujar jugadores — priorizar jugadorLocal propio para evitar
+        // conflictos con el singleton compartido en modo PruebaDirecta
+        java.util.List<Jugador> jugadoresARenderizar = EstadoJuego.getInstancia().getJugadores();
+        
+        if (jugadorLocal != null && !jugadoresARenderizar.contains(jugadorLocal)) {
+            // Si nuestro jugador no está en la lista del singleton, lo dibujamos igual
+            dibujarTripulante(g, jugadorLocal);
+            g.setColor(Color.WHITE);
+            g.drawString(jugadorLocal.getNombre(), jugadorLocal.getX(), jugadorLocal.getY() - 10);
+        }
+        
+        for (Jugador j : jugadoresARenderizar) {
             dibujarTripulante(g, j);
-            
-            // Nombre encima
             g.setColor(Color.WHITE);
             g.drawString(j.getNombre(), j.getX(), j.getY() - 10);
         }
         
-        // Mensaje si no hay jugadores
-        if (EstadoJuego.getInstancia().getJugadores().isEmpty()) {
+        if (jugadorLocal == null && jugadoresARenderizar.isEmpty()) {
             g.setColor(Color.WHITE);
             g.drawString("No hay jugadores. Inicia partida.", 300, 300);
         }

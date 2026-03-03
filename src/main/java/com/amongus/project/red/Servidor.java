@@ -4,7 +4,7 @@ import com.amongus.project.data.GestorDatos; // Importamos el gestor para guarda
 import java.io.IOException; // Importamos esto por si falla la entrada o salida
 import java.net.ServerSocket; // Esta es la libreria para crear el servidor
 import java.net.Socket; // Esta es la libreria para los enchufes (conexiones)
-import java.util.ArrayList; // Usamos esto para hacer una lista dinamica
+import java.util.concurrent.CopyOnWriteArrayList; // Usamos esto para hacer una lista dinamica
 
 /**
  * Clase Servidor
@@ -20,7 +20,7 @@ public class Servidor { // Clase publica del servidor
     
     // Esta lista va a guardar a todos los hilos de los jugadores que se conecten
     // La pongo static para poder acceder desde cualquier lado sin instanciar la clase
-    public static ArrayList<AtencionJugador> listaJugadores = new ArrayList<>(); 
+    public static CopyOnWriteArrayList<AtencionJugador> listaJugadores = new CopyOnWriteArrayList<>(); 
 
     public static void main(String[] args) { // Metodo principal main
         
@@ -89,9 +89,9 @@ public class Servidor { // Clase publica del servidor
         System.out.println("Intentando iniciar partida..."); // Log
         
         // Requisito del PDF: Minimo 5 jugadores para iniciar.
-        if (listaJugadores.size() < 5) { // Verifica si hay menos de 5 jugadores
-            System.out.println("Hay muy poca gente para jugar (Minimo 5)"); // Aviso en consola
-            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 5)."); // Avisa a los clientes
+        if (listaJugadores.size() < 1) { // Verifica si hay menos de 5 jugadores
+            System.out.println("Hay muy poca gente para jugar (Minimo 1)"); // Aviso en consola
+            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 1)."); // Avisa a los clientes
             return; // Salimos del metodo, la partida no arranca
         }
         
@@ -111,19 +111,34 @@ public class Servidor { // Clase publica del servidor
         
         System.out.println("Los impostores son los indices: " + impostor1 + (impostor2 != -1 ? " y " + impostor2 : "")); // Log secreto
         
-        // Recorremos la lista para avisarles que son
-        for (int i = 0; i < listaJugadores.size(); i++) { // Bucle clasico
-            AtencionJugador jugador = listaJugadores.get(i); // Sacamos al jugador
-            
-            // Si el indice coincide con alguno de los dos impostores
-            if (i == impostor1 || i == impostor2) { 
-                jugador.enviarMensaje("ROL:IMPOSTOR"); // Le decimos que es el malo
-            } else { // Si no
-                jugador.enviarMensaje("ROL:TRIPULANTE"); // Le decimos que es bueno
+        // Asignamos los roles a nivel de servidor
+        for (int i = 0; i < listaJugadores.size(); i++) {
+            AtencionJugador jugador = listaJugadores.get(i);
+            if (i == impostor1 || i == impostor2) {
+                jugador.esImpostor = true;
+            } else {
+                jugador.esImpostor = false;
+            }
+        }
+
+        // Preparamos el mensaje con todos los datos
+        String[] colores = {"RED", "BLUE", "GREEN", "YELLOW", "ORANGE", "PINK", "PURPLE", "CYAN", "WHITE", "BROWN"};
+        StringBuilder datosPartida = new StringBuilder("DATOS_PARTIDA:");
+
+        for (int i = 0; i < listaJugadores.size(); i++) {
+            AtencionJugador jugador = listaJugadores.get(i);
+            String nombre = jugador.getNombreJugador();
+            String rol = jugador.esImpostor ? "IMPOSTOR" : "TRIPULANTE";
+            String color = colores[i % colores.length]; // Asigna un color de la lista
+
+            datosPartida.append(nombre).append(",").append(rol).append(",").append(color);
+            if (i < listaJugadores.size() - 1) {
+                datosPartida.append(";");
             }
         }
         
-        enviarATodos("JUEGO_INICIADO"); // Avisamos a todos que arranca (mensaje estandarizado)
+        // Enviamos el mensaje con todos los datos a todos los jugadores
+        enviarATodos(datosPartida.toString());
     }
     
     // Metodo para terminar la partida y guardar en el XML

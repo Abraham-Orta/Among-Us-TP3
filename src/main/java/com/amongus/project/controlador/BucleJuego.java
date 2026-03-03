@@ -11,6 +11,10 @@ public class BucleJuego implements Runnable {
     private boolean corriendo = false;
     private Thread hiloJuego;
     
+    // Última posición enviada al servidor (para no enviar si no hubo cambio)
+    private int ultimoXEnviado = -1;
+    private int ultimoYEnviado = -1;
+    
     // FPS objetivo
     private final int FPS = 60;
     // Tiempo objetivo por frame en nanosegundos
@@ -73,14 +77,22 @@ public class BucleJuego implements Runnable {
         if (fase == EstadoJuego.Fase.VOTACION) {
             panelJuego.getPantallaVotacion().actualizar();
         } else if (fase == EstadoJuego.Fase.JUGANDO) {
-             // Obtener el jugador local y actualizar su movimiento basado en teclas
-            Jugador jugadorLocal = estado.getJugadorLocal();
+            Jugador jugadorLocal = panelJuego.getJugadorLocal();
             if (jugadorLocal != null) {
-                jugadorLocal.actualizar();
+                jugadorLocal.actualizar(panelJuego.getManejadorEntrada());
+                
+                // Si la posición cambió, avisamos al servidor para que lo retransmita
+                int x = jugadorLocal.getX();
+                int y = jugadorLocal.getY();
+                if (x != ultimoXEnviado || y != ultimoYEnviado) {
+                    ultimoXEnviado = x;
+                    ultimoYEnviado = y;
+                    panelJuego.getCliente().enviarMensaje(
+                        "POSICION:" + jugadorLocal.getNombre() + ":" + x + ":" + y
+                    );
+                }
             }
         }
-        
-        // Aquí podríamos actualizar otros elementos (tareas, timers, otros jugadores interpolados)
     }
     
     private void renderizar() {

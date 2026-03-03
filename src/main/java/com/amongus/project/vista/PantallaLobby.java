@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.amongus.project.controlador.BucleJuego;
 import com.amongus.project.modelo.EstadoJuego;
+import com.amongus.project.modelo.Jugador;
 import com.amongus.project.red.Cliente;
 
 public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
@@ -155,14 +156,14 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         // para que todos entremos al mismo tiempo.
     }
     
-    public void abrirJuego() {
+    public void abrirJuego(Jugador jugadorLocal) {
         dispose();
         
         SwingUtilities.invokeLater(() -> {
             JFrame frameJuego = new JFrame("Among Us - En Juego");
             frameJuego.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             
-            PanelJuego panelJuego = new PanelJuego();
+            PanelJuego panelJuego = new PanelJuego(cliente, jugadorLocal);
             frameJuego.add(panelJuego);
             frameJuego.pack();
             frameJuego.setLocationRelativeTo(null);
@@ -171,7 +172,8 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             BucleJuego bucle = new BucleJuego(panelJuego);
             bucle.iniciar();
             
-            panelJuego.requestFocus();
+            // requestFocusInWindow es más confiable que requestFocus para paneles dentro de un JFrame
+            panelJuego.requestFocusInWindow();
         });
     }
     
@@ -284,21 +286,31 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         
         return b;
     }
+
+    private Color getColorPorNombre(String nombreColor) {
+        if (nombreColor == null) return Color.WHITE;
+        switch (nombreColor.toUpperCase()) {
+            case "RED": return Color.RED;
+            case "BLUE": return Color.BLUE;
+            case "GREEN": return Color.GREEN;
+            case "YELLOW": return Color.YELLOW;
+            case "ORANGE": return Color.ORANGE;
+            case "PINK": return Color.PINK;
+            case "PURPLE": return new Color(128, 0, 128);
+            case "CYAN": return Color.CYAN;
+            case "WHITE": return Color.WHITE;
+            case "BROWN": return new Color(139, 69, 19);
+            default: return Color.GRAY;
+        }
+    }
     
     @Override
     public void onMensajeRecibido(String mensaje) {
-        // Procesar mensajes del servidor
         if (mensaje.startsWith("LISTA_JUGADORES:")) {
-            // Extraer lista de jugadores
-            String listaStr = mensaje.substring(16); // Después de "LISTA_JUGADORES:"
-            
-            if (listaStr.isEmpty()) {
-                return; // No hay jugadores
-            }
+            String listaStr = mensaje.substring(16);
+            if (listaStr.isEmpty()) return;
             
             String[] nombres = listaStr.split(",");
-            
-            // Actualizar lista en el hilo de Swing (thread-safe)
             SwingUtilities.invokeLater(() -> {
                 jugadoresConectados.clear();
                 for (String nombre : nombres) {
@@ -308,9 +320,38 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
                 }
                 actualizarListaJugadores();
             });
-        } else if (mensaje.equals("JUEGO_INICIADO")) {
-            // El host inició la partida
-            SwingUtilities.invokeLater(() -> abrirJuego());
+
+        } else if (mensaje.startsWith("DATOS_PARTIDA:")) {
+            String datos = mensaje.substring(14);
+            String[] jugadoresData = datos.split(";");
+
+            Jugador miJugador = null;
+            java.util.List<Jugador> todosJugadores = new java.util.ArrayList<>();
+
+            for (String dataJugador : jugadoresData) {
+                String[] partes = dataJugador.split(",");
+                String nombre = partes[0];
+                boolean esImpostor = partes[1].equals("IMPOSTOR");
+                Color color = getColorPorNombre(partes[2]);
+                
+                Jugador nuevoJugador = new Jugador(nombre, 100, 100, color, esImpostor);
+                todosJugadores.add(nuevoJugador);
+                
+                if (nombre.equals(this.nombreJugador)) {
+                    miJugador = nuevoJugador;
+                }
+            }
+
+            // Poblar el EstadoJuego con la lista limpia (limpiar antes para evitar duplicados)
+            EstadoJuego estado = EstadoJuego.getInstancia();
+            estado.getJugadores().clear();
+            for (Jugador j : todosJugadores) {
+                estado.agregarJugador(j);
+            }
+            estado.setFaseActual(EstadoJuego.Fase.JUGANDO);
+
+            final Jugador jugadorLocalFinal = miJugador;
+            SwingUtilities.invokeLater(() -> abrirJuego(jugadorLocalFinal));
         }
     }
     

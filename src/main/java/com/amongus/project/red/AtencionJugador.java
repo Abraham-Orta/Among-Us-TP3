@@ -17,6 +17,13 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     private BufferedReader entrada; // Canal para escuchar lo que dice el jugador
     private PrintWriter salida; // Canal para hablarle al jugador
     private String nombreJugador; // Guardamos el nombre (ej: "Samuel")
+    public boolean esImpostor = false;
+
+    // Estado del movimiento del jugador, controlado por el servidor
+    public boolean moviendoArriba = false;
+    public boolean moviendoAbajo = false;
+    public boolean moviendoIzquierda = false;
+    public boolean moviendoDerecha = false;
 
     // Constructor: Se ejecuta cuando creamos el objeto con "new"
     public AtencionJugador(Socket socket) { // Recibimos el socket desde el Servidor
@@ -66,11 +73,25 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     // Enviar lista actualizada de jugadores
                     Servidor.enviarListaJugadores();
                 }
-                // Si el mensaje empieza con "MOVER:" (Ej: MOVER:10,20)
-                else if (lineaRecibida.startsWith("MOVER:")) {
-                    // Reenviamos el movimiento a todos para que actualicen sus pantallas
-                    // Le agregamos el nombre para saber QUIEN se movio
-                    Servidor.enviarATodos("MOVER:" + this.nombreJugador + "," + lineaRecibida.substring(6));
+                else if (lineaRecibida.startsWith("MOVIMIENTO:")) {
+                    String[] partes = lineaRecibida.split(":");
+                    boolean press = partes[1].equals("PRESS");
+                    String dir = partes[2];
+
+                    switch (dir) {
+                        case "UP": moviendoArriba = press; break;
+                        case "DOWN": moviendoAbajo = press; break;
+                        case "LEFT": moviendoIzquierda = press; break;
+                        case "RIGHT": moviendoDerecha = press; break;
+                    }
+                }
+                // Cuando un cliente envía su nueva posición, la reenviamos a todos los demás
+                else if (lineaRecibida.startsWith("POSICION:")) {
+                    for (AtencionJugador otro : Servidor.listaJugadores) {
+                        if (otro != this) { // No se la enviamos al que la mandó
+                            otro.enviarMensaje(lineaRecibida);
+                        }
+                    }
                 }
                 // Si alguien escribe INICIAR (digamos que es el boton de Start)
                 else if (lineaRecibida.equals("COMANDO:INICIAR")) {

@@ -49,17 +49,17 @@ public class Jugador extends Personaje {
     public Jugador getVotoJugador() { return votoJugador; }
 
     // Este método se llama en cada frame del juego (60 veces por segundo)
-    public void actualizar() {
+    public void actualizar(ManejadorEntrada entrada) {
         if (!vivo) return; // Si está muerto, no se mueve (o se mueve como fantasma, lógica futura)
 
         int dx = 0;
         int dy = 0;
 
         // Leemos el estado del teclado
-        if (ManejadorEntrada.arriba) dy -= 1;
-        if (ManejadorEntrada.abajo) dy += 1;
-        if (ManejadorEntrada.izquierda) dx -= 1;
-        if (ManejadorEntrada.derecha) dx += 1;
+        if (entrada.arriba) dy -= 1;
+        if (entrada.abajo) dy += 1;
+        if (entrada.izquierda) dx -= 1;
+        if (entrada.derecha) dx += 1;
 
         // Si nos estamos moviendo en alguna dirección
         if (dx != 0 || dy != 0) {
@@ -83,15 +83,15 @@ public class Jugador extends Personaje {
         }
 
         // Logica para paralizar (matar) por contacto
-        if (this.impostor && ManejadorEntrada.accionMatar) { // Si el jugador es impostor y presiona la tecla de accion (E)
+        if (this.impostor && entrada.accionMatar) { // Si el jugador es impostor y presiona la tecla de accion (E)
             intentarParalizarTripulante(); // Llama al metodo para paralizar
-            ManejadorEntrada.accionMatar = false; // Resetea la tecla para evitar hacer spam de la accion
+            entrada.accionMatar = false; // Resetea la tecla para evitar hacer spam de la accion
         }
 
         // Logica para vias de acceso rapido (alcantarillas / conductos)
-        if (this.impostor && ManejadorEntrada.accionVentilar) { // Si el jugador es impostor y presiona la tecla de ventilacion (F)
+        if (this.impostor && entrada.accionVentilar) { // Si el jugador es impostor y presiona la tecla de ventilacion (F)
             intentarUsarVentilacion(); // Llama al metodo para viajar por el conducto
-            ManejadorEntrada.accionVentilar = false; // Resetea la tecla de ventilacion
+            entrada.accionVentilar = false; // Resetea la tecla de ventilacion
         }
     }
 
