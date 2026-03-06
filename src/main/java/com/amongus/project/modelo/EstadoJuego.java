@@ -16,7 +16,7 @@ public class EstadoJuego {
     private EstadoJuego() {
         jugadores = new ArrayList<>();
         faseActual = Fase.MENU;
-        mapa = new Mapa();
+        mapa = new Mapa("mapa1.png");
     }
 
     public static synchronized EstadoJuego getInstancia() {
@@ -47,4 +47,5 @@ public class EstadoJuego {
     public void setFaseActual(Fase f) { this.faseActual = f; }
     
     public Mapa getMapa() { return mapa; }
+    public void setMapa(Mapa mapa) { this.mapa = mapa; }
 }

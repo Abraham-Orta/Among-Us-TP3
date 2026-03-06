@@ -1,33 +1,45 @@
-package com.amongus.project.vista;
+package com.amongus.project.vista; // Paquete de la interfaz de usuario
 
-import javax.swing.JPanel;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.Color;
-import java.awt.Dimension;
-import com.amongus.project.modelo.EstadoJuego;
-import com.amongus.project.modelo.Jugador;
-import com.amongus.project.modelo.Mapa;
-import com.amongus.project.controlador.ManejadorEntrada;
+import javax.swing.JPanel; // Clase base para lienzos de dibujo en Java Swing
+import java.awt.Graphics;  // Proporciona herramientas básicas de dibujo
+import java.awt.Graphics2D; // Versión avanzada de Graphics para transformaciones (como la cámara)
+import java.awt.Color;     // Para usar colores
+import java.awt.Dimension; // Para establecer el tamaño del panel
+import com.amongus.project.modelo.EstadoJuego; // Para obtener datos actuales del juego
+import com.amongus.project.modelo.Jugador;     // Para obtener info de cada jugador
+import com.amongus.project.modelo.Mapa;        // Para dibujar el entorno
+import com.amongus.project.controlador.ManejadorEntrada; // Para conectar los controles
 
+/**
+ * PanelJuego
+ * ==========
+ * Esta es la pantalla principal mientras la partida está activa.
+ * Hereda de JPanel, que es básicamente un lienzo en blanco donde nosotros
+ * vamos a pintar el mapa, los jugadores, los cadáveres y la cámara frame por frame.
+ */
 public class PanelJuego extends JPanel {
     
+    // Objeto que representa la pantalla superpuesta cuando hay una reunión
     private PantallaVotacion pantallaVotacion;
 
+    /**
+     * Constructor: Configura el lienzo al abrirse la ventana.
+     */
     public PanelJuego() {
+        // Establecemos un tamaño ideal para el área de juego
         setPreferredSize(new Dimension(800, 600));
-        setBackground(Color.BLACK);
-        setFocusable(true);
+        setBackground(Color.BLACK); // Fondo negro de emergencia por si el mapa falla
+        setFocusable(true); // Muy importante: permite que el panel detecte cuando presionamos teclas
         
-        // Manejo de Teclado
+        // Conectamos nuestro controlador de teclado (ManejadorEntrada) al panel
         addKeyListener(new ManejadorEntrada());
         
-        // Manejo de Ratón
+        // Instanciamos el controlador interno de ratón y lo conectamos
         ManejadorEntrada.MouseHandler mouseHandler = new ManejadorEntrada.MouseHandler();
-        addMouseListener(mouseHandler);
-        addMouseMotionListener(mouseHandler);
+        addMouseListener(mouseHandler);       // Escucha clics
+        addMouseMotionListener(mouseHandler); // Escucha el movimiento del ratón
         
-        // Inicializar pantallas
+        // Inicializamos la pantalla de votación (para cuando reporten un cuerpo)
         this.pantallaVotacion = new PantallaVotacion();
     }
     
@@ -35,19 +47,33 @@ public class PanelJuego extends JPanel {
         return pantallaVotacion;
     }
     
+    /**
+     * paintComponent
+     * ==============
+     * Este es el "corazón visual" del juego. Se llama automáticamente docenas
+     * de veces por segundo para repintar la pantalla (gracias al BucleJuego).
+     * 
+     * @param g La "brocha" que Java nos da para dibujar cuadrados, líneas e imágenes.
+     */
     @Override
     protected void paintComponent(Graphics g) {
+        // Llamar siempre a super.paintComponent(g) para que Swing limpie el frame anterior
         super.paintComponent(g);
         
+        // Obtenemos cómo está el juego ahora mismo (quién juega, en qué fase estamos)
         EstadoJuego estado = EstadoJuego.getInstancia();
         EstadoJuego.Fase fase = estado.getFaseActual();
         
+        // Si estamos en medio de una votación, NO dibujamos el mapa,
+        // le pasamos la brocha a la pantalla de Votación para que ella dibuje y salimos.
         if (fase == EstadoJuego.Fase.VOTACION) {
             pantallaVotacion.render(g);
             return; 
         }
         
-        // --- LOGICA DE CAMARA ---
+        // --- LÓGICA DE CÁMARA (VISTA 2D SCROLLING) ---
+        // La cámara debe seguir a NUESTRO jugador. En lugar de mover al jugador en la pantalla,
+        // dejamos al jugador en el centro y movemos TODO EL MUNDO en dirección contraria.
         int camX = 0;
         int camY = 0;
         
@@ -55,90 +81,151 @@ public class PanelJuego extends JPanel {
         Mapa mapa = estado.getMapa();
         
         if (local != null && mapa != null) {
-            // Centrar al jugador: posJugador - (tamañoPantalla / 2)
+            // Calculamos dónde debe estar la esquina superior izquierda de la cámara
+            // Fórmula: Posición del jugador - (Mitad del ancho de la ventana)
             camX = local.getX() - (getWidth() / 2);
             camY = local.getY() - (getHeight() / 2);
             
-            // Limitar cámara a los bordes del mapa
+            // RESTRICCIÓN DE CÁMARA: No queremos ver el vacío negro fuera del mapa
+            // Si la cámara se sale por la izquierda (menor a 0), la pegamos al borde (0)
             if (camX < 0) camX = 0;
             if (camY < 0) camY = 0;
+            
+            // Si la cámara se sale por la derecha, la pegamos al máximo límite (AnchoMapa - AnchoVentana)
             if (camX > mapa.getAncho() - getWidth()) camX = mapa.getAncho() - getWidth();
             if (camY > mapa.getAlto() - getHeight()) camY = mapa.getAlto() - getHeight();
         }
         
-        // Aplicar traslación de cámara (invertida para que el mundo se mueva)
+        // Usamos Graphics2D para tener acceso a traslaciones avanzadas
         Graphics2D g2d = (Graphics2D) g;
+        
+        // APLICAMOS LA CÁMARA: Desplazamos el lienzo entero en negativo.
+        // Esto crea el efecto de que la cámara se movió sobre el mapa.
         g2d.translate(-camX, -camY);
         
-        // Dibujar mapa
+        // DIBUJAR CAPA 1: EL MAPA Y ALCANTARILLAS
+        // Le pasamos la brocha al mapa para que dibuje su imagen de fondo y las vías
         if (mapa != null) {
             mapa.render(g);
         }
         
-        // Dibujar jugadores
+        // DIBUJAR CAPA 2: LOS JUGADORES Y LOS PARALIZADOS
         for (Jugador j : estado.getJugadores()) {
-            dibujarTripulante(g, j);
+            dibujarTripulante(g, j); // Dibujamos el personaje físico
             
-            // Nombre encima
+            // Dibujamos el nombre de usuario flotando encima de su cabeza
             g.setColor(Color.WHITE);
+            // x, y-10 pone el texto arribita del casco
             g.drawString(j.getNombre(), j.getX(), j.getY() - 10);
         }
         
-        // Dibujar nosotros mismos si no estamos en la lista general (a veces pasa en local)
+        // Seguridad: A veces en pruebas locales el jugador host no está en la lista general.
+        // Si es el caso, nos aseguramos de dibujarlo igual.
         if (local != null && !estado.getJugadores().contains(local)) {
              dibujarTripulante(g, local);
              g.setColor(Color.WHITE);
              g.drawString(local.getNombre(), local.getX(), local.getY() - 10);
         }
 
-        // Revertir traslación para elementos fijos de la UI (si hubiera)
+        // DESHACER LA CÁMARA: Revertimos la traslación para volver al (0,0) real de la pantalla.
+        // Esto sirve para dibujar cosas fijas de la UI (Interfaz de Usuario) como mapas minimizados o botones
+        // que no deben moverse aunque el jugador camine.
         g2d.translate(camX, camY);
         
-        // Mensaje si no hay jugadores
+        // Si por alguna razón la sala está vacía y no arrancó bien, mostramos una advertencia fija en pantalla
         if (estado.getJugadores().isEmpty() && local == null) {
             g.setColor(Color.WHITE);
             g.drawString("No hay jugadores. Inicia partida.", 300, 300);
         }
     }
 
+    /**
+     * Dibuja pixel art aproximado de un personaje de Among Us (o su versión paralizada).
+     * 
+     * @param g La brocha gráfica.
+     * @param j El jugador que contiene los datos (X, Y, Vivo/Paralizado, Dirección).
+     */
     private void dibujarTripulante(Graphics g, Jugador j) {
         int x = j.getX();
         int y = j.getY();
-        // Usamos el tamaño del hitbox como referencia (30x50), pero dibujamos un poco mas grande
-        int w = 30;
-      
-      
-        int h = 40; // Cuerpo un poco mas bajo para las patas
+        int w = 30; // Ancho base
+        int h = 40; // Alto base del cuerpo
         
-        int dir = j.getDireccion(); // 1 derecha, -1 izquierda, 0 quieto (usar ultimo)
-        if (dir == 0) dir = 1; // Por defecto derecha
+        // Obtenemos a dónde mira (1=derecha, -1=izquierda) para voltear el dibujo
+        int dir = j.getDireccion(); 
+        if (dir == 0) dir = 1; // Si está estático, asume que mira a la derecha
         
+        // --- REQUISITO: JUGADOR INHABILITADO / PARALIZADO ---
+        if (!j.isVivo()) {
+            // Si el jugador fue tocado por el impostor, lo dibujamos tirado en el piso, 
+            // más oscurecido y achatado, con un letrero arriba.
+            
+            g.setColor(j.getColor().darker().darker()); // Color marchito/apagado
+            
+            // Dibujamos un rectángulo aplastado en el suelo simulando estar tirado
+            g.fillRoundRect(x, y + 25, w + 15, h / 2, 10, 10); 
+            
+            // Hueso asomando (típico de Among Us)
+            g.setColor(Color.WHITE);
+            g.fillOval(x + 15, y + 20, 10, 10);
+            
+            // Etiqueta visual para depuración
+            g.setColor(Color.RED);
+            g.drawString("PARALIZADO", x - 10, y - 5);
+            
+            return; // Termina la función aquí. No dibujamos piernas ni visor.
+        }
+        
+        // --- JUGADOR VIVO ---
+        
+        // Seleccionamos el color del jugador
         g.setColor(j.getColor());
         
-        // Mochila
+        // DIBUJAR MOCHILA
         int mochilaW = 10;
         int mochilaH = 25;
-        if (dir == 1) { // Derecha -> Mochila a la izquierda
+        if (dir == 1) { // Mira Derecha -> Mochila a la izquierda
             g.fillRect(x - 5, y + 10, mochilaW, mochilaH);
-        } else { // Izquierda -> Mochila a la derecha
+        } else { // Mira Izquierda -> Mochila a la derecha
             g.fillRect(x + w - 5, y + 10, mochilaW, mochilaH);
         }
         
-        // Cuerpo
+        // DIBUJAR CUERPO (Cápsula principal)
         g.fillRoundRect(x, y, w, h, 15, 15);
         
-        // Patas
-        g.fillRect(x, y + h - 5, 10, 15); // Pata izquierda
-        g.fillRect(x + w - 10, y + h - 5, 10, 15); // Pata derecha
+        // DIBUJAR PIERNAS
+        g.fillRect(x, y + h - 5, 10, 15); // Pierna izquierda
+        g.fillRect(x + w - 10, y + h - 5, 10, 15); // Pierna derecha
         
-        // Visor (Celeste/GrisÃ¡ceo)
-        g.setColor(new Color(150, 200, 220));
+        // DIBUJAR VISOR (Gafas)
+        g.setColor(new Color(150, 200, 220)); // Color celeste/Grisáceo claro
         int visorW = 18;
         int visorH = 12;
         if (dir == 1) { // Mirando derecha
+            // Dibujamos el visor tirado hacia la derecha
             g.fillRoundRect(x + 15, y + 10, visorW, visorH, 5, 5);
         } else { // Mirando izquierda
+            // Dibujamos el visor tirado hacia la izquierda
             g.fillRoundRect(x - 3, y + 10, visorW, visorH, 5, 5);
+        }
+        
+        // --- MODO DESARROLLADOR: DIBUJAR HITBOX DEL JUGADOR ---
+        if (ManejadorEntrada.modoDesarrollador) {
+            g.setColor(Color.GREEN);
+            // La hitbox real del jugador, que se usa para colisiones y matar
+            g.drawRect(j.getHitbox().x, j.getHitbox().y, j.getHitbox().width, j.getHitbox().height);
+        }
+        
+        // Si eres tú (jugador local) y eres Impostor, dibujamos tu nombre en ROJO 
+        // y mostramos un pequeño texto de ayuda visual
+        Jugador local = EstadoJuego.getInstancia().getJugadorLocal();
+        if (j == local && j.isImpostor()) {
+            g.setColor(Color.RED);
+            g.drawString(j.getNombre(), x, y - 10); // Sobrescribe el nombre blanco anterior
+            
+            // Indicador de controles debajo del personaje
+            g.setColor(Color.ORANGE);
+            g.drawString("[Q] Paralizar | [E] Alcantarilla", x - 30, y + 65);
         }
     }
 }

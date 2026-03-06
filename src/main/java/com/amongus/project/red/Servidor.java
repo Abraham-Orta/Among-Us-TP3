@@ -85,14 +85,13 @@ public class Servidor { // Clase publica del servidor
     } // Fin metodo enviarATodos
 
     // Metodo nuevo para asignar roles cuando ya esten todos
-    public static void iniciarPartida() { // Metodo estatico
-        System.out.println("Intentando iniciar partida..."); // Log
+    public static void iniciarPartida(String mapaElegido) { // Metodo estatico
+        System.out.println("Intentando iniciar partida con mapa: " + mapaElegido); // Log
         
         // Requisito del PDF: Minimo 5 jugadores para iniciar.
-        // CAMBIO TEMPORAL: Bajamos a 2 para pruebas locales
-        if (listaJugadores.size() < 2) { 
-            System.out.println("Hay muy poca gente para jugar (Minimo 2)"); // Aviso
-            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 2).");
+        if (listaJugadores.size() < 2) {
+            System.out.println("Hay muy poca gente para jugar (Mínimo 5)"); // Aviso
+            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Mínimo 5).");
             return; // Salimos del metodo, no arranca
         }
         
@@ -124,7 +123,7 @@ public class Servidor { // Clase publica del servidor
             }
         }
         
-        enviarATodos("JUEGO_INICIADO"); // Avisamos a todos que arranca (mensaje estandarizado)
+        enviarATodos("JUEGO_INICIADO:" + mapaElegido); // Avisamos a todos que arranca (mensaje estandarizado con mapa)
     }
     
     // Metodo para terminar la partida y guardar en el XML

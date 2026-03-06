@@ -51,8 +51,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelFondo.add(etiquetaTitulo, BorderLayout.NORTH); // Añade en zona norte del BorderLayout
 
         // opciones en el centro
-        // Panel transparente para agrupar las opciones
-        JPanel panelCentral = new JPanel(); // Panel para contener las dos opciones
+        // Panel transparente para agrupar las tres opciones
+        JPanel panelCentral = new JPanel(); // Panel para contener las opciones
         panelCentral.setOpaque(false); // Hace el panel transparente
         panelCentral.setLayout(new GridBagLayout()); // Layout para centrado flexible
 
@@ -61,8 +61,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelLocal.setOpaque(false); // Transparente
         panelLocal.setLayout(new BoxLayout(panelLocal, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen Local
-        JLabel imgLocal = crearEtiquetaImagen("imagenLocal.png", 320, 220); // Crea etiqueta con imagen
+        // Imagen Local (Reducida para que quepan las 3 opciones)
+        JLabel imgLocal = crearEtiquetaImagen("imagenLocal.png", 240, 160); // Crea etiqueta con imagen
         imgLocal.setAlignmentX(Component.CENTER_ALIGNMENT); // Centra horizontalmente
 
         // Botón Local
@@ -79,8 +79,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelOnline.setOpaque(false); // Transparente
         panelOnline.setLayout(new BoxLayout(panelOnline, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen En Linea
-        JLabel imgOnline = crearEtiquetaImagen("imagenEnLinea.png", 320, 220); // Crea etiqueta con imagen
+        // Imagen En Linea (Reducida)
+        JLabel imgOnline = crearEtiquetaImagen("imagenEnLinea.png", 240, 160); // Crea etiqueta con imagen
         imgOnline.setAlignmentX(Component.CENTER_ALIGNMENT); // Centra horizontalmente
 
         // Botón En Linea
@@ -97,8 +97,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelUnirse.setOpaque(false); // Transparente
         panelUnirse.setLayout(new BoxLayout(panelUnirse, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen Unirse (usamos la misma de En Linea)
-        JLabel imgUnirse = crearEtiquetaImagen("imagenEnLinea.png", 320, 220);
+        // Imagen Unirse (Reducida)
+        JLabel imgUnirse = crearEtiquetaImagen("imagenEnLinea.png", 240, 160);
         imgUnirse.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Botón Unirse
@@ -110,23 +110,24 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelUnirse.add(Box.createVerticalStrut(20));
         panelUnirse.add(btnUnirse);
 
-        // aqui para unir los paneles
+        // aqui para unir los paneles de manera responsiva
         GridBagConstraints gbc = new GridBagConstraints(); // Objeto para configurar posición en GridBagLayout
+        gbc.weightx = 1.0; // Distribuye el espacio horizontal equitativamente
+        gbc.anchor = GridBagConstraints.CENTER; // Centra los elementos
+        gbc.fill = GridBagConstraints.NONE; // No estira los paneles, solo los centra
 
         // Configuración Izquierda
         gbc.gridx = 0; // Columna 0 (primera columna)
         gbc.gridy = 0; // Fila 0
-        gbc.insets = new Insets(0, 0, 0, 30); // Margen derecho de 30 pixeles
+        gbc.insets = new Insets(0, 10, 0, 10); // Márgenes más pequeños para que quepan bien
         panelCentral.add(panelLocal, gbc); // Añade panel Local
 
         // Configuración Centro
         gbc.gridx = 1; // Columna 1 (segunda columna)
-        gbc.insets = new Insets(0, 30, 0, 30); // Margen izquierdo y derecho de 30 píxeles
         panelCentral.add(panelOnline, gbc); // Añade panel Online
 
         // Configuración Derecha
         gbc.gridx = 2; // Columna 2 (tercera columna)
-        gbc.insets = new Insets(0, 30, 0, 0); // Margen izquierdo de 30 píxeles
         panelCentral.add(panelUnirse, gbc); // Añade panel Unirse
 
         // Agregar al fondo

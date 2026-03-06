@@ -10,6 +10,7 @@ import java.util.List;
 
 import com.amongus.project.controlador.BucleJuego;
 import com.amongus.project.modelo.EstadoJuego;
+import com.amongus.project.modelo.Jugador;
 import com.amongus.project.red.Cliente;
 
 public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
@@ -20,6 +21,10 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private JPanel panelJugadores;
     private List<String> jugadoresConectados;
     private String codigoSala;
+    
+    // --- NUEVO: Selector de mapa ---
+    private JComboBox<String> selectorMapa;
+    private final String[] MAPAS_DISPONIBLES = {"mapa1.png", "mapa2.png"}; // Los dos mapas requeridos por el PDF
     
     public PantallaLobby(String nombreJugador, boolean esHost, Cliente cliente) {
         this.nombreJugador = nombreJugador;
@@ -62,12 +67,103 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         
         // Mostrar código si es host
         if (esHost && codigoSala != null) {
-            JLabel lblCodigo = new JLabel("Código: " + codigoSala, SwingConstants.CENTER);
+            JLabel lblCodigo = new JLabel("Codigo: " + codigoSala, SwingConstants.CENTER);
             lblCodigo.setFont(cargarFuente(28f));
             lblCodigo.setForeground(new Color(100, 255, 100)); // Verde claro
             lblCodigo.setAlignmentX(Component.CENTER_ALIGNMENT);
             panelTitulo.add(Box.createRigidArea(new Dimension(0, 10)));
             panelTitulo.add(lblCodigo);
+            
+            // Selector de mapa (Solo visible para el anfitrión)
+            JPanel panelSelector = new JPanel(new FlowLayout(FlowLayout.CENTER));
+            panelSelector.setOpaque(false);
+            
+            selectorMapa = new JComboBox<>(new String[]{"Villa Asia - Sector A", "Villa Asia - Sector B"});
+            
+            // Sobrescribimos TODO el proceso de pintado para hacerlo idéntico a los botones del juego
+            selectorMapa.setUI(new javax.swing.plaf.basic.BasicComboBoxUI() {
+                @Override
+                public void paint(Graphics g, JComponent c) {
+                    Graphics2D g2 = (Graphics2D) g.create();
+                    g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                    // Fondo de cápsula negra
+                    g2.setColor(Color.BLACK);
+                    g2.fillRoundRect(0, 0, c.getWidth(), c.getHeight(), 30, 30);
+                    
+                    // Borde de cápsula blanca
+                    g2.setColor(Color.WHITE);
+                    g2.setStroke(new BasicStroke(3));
+                    g2.drawRoundRect(1, 1, c.getWidth() - 3, c.getHeight() - 3, 30, 30);
+                    g2.dispose();
+                    
+                    // Dibujamos el texto encima
+                    Rectangle bounds = rectangleForCurrentValue();
+                    paintCurrentValue(g, bounds, hasFocus);
+                }
+                
+                @Override
+                public void paintCurrentValue(Graphics g, Rectangle bounds, boolean hasFocus) {
+                    ListCellRenderer renderer = comboBox.getRenderer();
+                    Component c = renderer.getListCellRendererComponent(listBox, comboBox.getSelectedItem(), -1, false, false);
+                    c.setBackground(Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                    if (c instanceof JComponent) {
+                        ((JComponent) c).setOpaque(false); // Transparente para que se vea la cápsula
+                    }
+                    currentValuePane.paintComponent(g, c, comboBox, bounds.x, bounds.y, bounds.width, bounds.height, false);
+                }
+                
+                @Override
+                protected JButton createArrowButton() {
+                    // Flecha completamente transparente
+                    JButton arrow = new JButton("▼");
+                    arrow.setForeground(Color.WHITE);
+                    arrow.setFocusPainted(false);
+                    arrow.setContentAreaFilled(false);
+                    arrow.setOpaque(false);
+                    arrow.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 15)); // Un margen derecho
+                    return arrow;
+                }
+            });
+            
+            selectorMapa.setFont(cargarFuente(19f)); 
+            selectorMapa.setForeground(Color.WHITE);
+            selectorMapa.setBackground(new Color(0, 0, 0, 0)); // Transparente para que se vea la cápsula pintada a mano
+            selectorMapa.setOpaque(false);
+            selectorMapa.setPreferredSize(new Dimension(280, 45)); // Más alto para la cápsula
+            selectorMapa.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            selectorMapa.setBorder(BorderFactory.createEmptyBorder()); // Quitamos el borde viejo
+            
+            // Renderizador de la lista emergente para que sea oscurísima
+            selectorMapa.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    JLabel c = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    c.setOpaque(true);
+                    c.setBackground(isSelected ? new Color(60, 60, 60) : Color.BLACK);
+                    c.setForeground(Color.WHITE);
+                    c.setHorizontalAlignment(SwingConstants.CENTER);
+                    c.setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0)); // Espaciado entre opciones
+                    return c;
+                }
+            });
+            
+            // Forzar el color de fondo y borde del menú desplegable (Popup)
+            Object comp = selectorMapa.getAccessibleContext().getAccessibleChild(0);
+            if (comp instanceof javax.swing.plaf.basic.ComboPopup) {
+                JComponent popup = (JComponent) comp;
+                JList<?> list = ((javax.swing.plaf.basic.ComboPopup) popup).getList();
+                list.setBackground(Color.BLACK);
+                list.setForeground(Color.WHITE);
+                list.setSelectionBackground(new Color(60, 60, 60));
+                list.setSelectionForeground(Color.WHITE);
+                popup.setBorder(BorderFactory.createLineBorder(Color.BLACK, 1));
+            }
+            
+            panelSelector.add(selectorMapa);
+            panelTitulo.add(Box.createRigidArea(new Dimension(0, 15)));
+            panelTitulo.add(panelSelector);
         }
         
         panelFondo.add(panelTitulo, BorderLayout.NORTH);
@@ -125,13 +221,60 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private void actualizarListaJugadores() {
         panelJugadores.removeAll();
         
+        // Intentamos cargar la imagen pequeña para los jugadores de forma síncrona
+        ImageIcon iconoJugador = null;
+        try {
+            // NOTA: Java no soporta archivos .webp de forma nativa. 
+            // Buscamos la version .png o .jpg
+            String[] posiblesNombres = {"Imagen_Espera.png", "Imagen_Espera.jpg", "icono_jugador.png"};
+            Image img = null;
+            
+            for (String n : posiblesNombres) {
+                java.net.URL u = getClass().getClassLoader().getResource(n);
+                if (u != null) {
+                    img = ImageIO.read(u);
+                } else {
+                    String[] rutas = {"src/main/resources/" + n, "resources/" + n, n};
+                    for (String r : rutas) {
+                        File f = new File(r);
+                        if (f.exists()) {
+                            img = ImageIO.read(f);
+                            break;
+                        }
+                    }
+                }
+                if (img != null) break;
+            }
+            
+            if (img != null) {
+                // Redimensionar a 48x32 píxeles
+                Image imgRedimensionada = img.getScaledInstance(48, 32, Image.SCALE_SMOOTH);
+                iconoJugador = new ImageIcon(imgRedimensionada);
+            }
+        } catch (Exception e) {
+            System.err.println("No se pudo cargar el icono del jugador para la lista: " + e.getMessage());
+        }
+        
         for (String jugador : jugadoresConectados) {
-            JLabel lblJugador = new JLabel("• " + jugador);
-            lblJugador.setFont(cargarFuente(20f));
+            JLabel lblJugador = new JLabel();
+            
+            // Limpiamos la variable jugador por si trae espacios vacíos raros del servidor
+            String nombreLimpio = jugador.trim();
+            
+            // Si logramos cargar la imagen, se la ponemos al JLabel junto con el nombre
+            if (iconoJugador != null) {
+                lblJugador.setIcon(iconoJugador);
+                lblJugador.setText(nombreLimpio); // Sin ningún espacio manual
+                lblJugador.setIconTextGap(15); // Espacio limpio manejado por Swing
+            } else {
+                lblJugador.setText("- " + nombreLimpio); // Guion clásico si falla
+            }
+            
+            lblJugador.setFont(cargarFuente(24f)); // Fuente un poco más grande para que haga juego con la imagen
             lblJugador.setForeground(Color.WHITE);
             lblJugador.setAlignmentX(Component.CENTER_ALIGNMENT);
             panelJugadores.add(lblJugador);
-            panelJugadores.add(Box.createRigidArea(new Dimension(0, 10)));
+            panelJugadores.add(Box.createRigidArea(new Dimension(0, 15))); // Más espacio entre jugadores
         }
         
         panelJugadores.revalidate();
@@ -148,11 +291,16 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private void iniciarPartida() {
         // Enviar mensaje al servidor para iniciar
         if (cliente != null) {
-            cliente.enviarMensaje("COMANDO:INICIAR");
+            String mapaSeleccionado = "mapa1.png"; // Mapa por defecto
+            if (selectorMapa != null) {
+                // Obtenemos el archivo de la constante según la posición elegida en el combo box
+                int index = selectorMapa.getSelectedIndex();
+                mapaSeleccionado = MAPAS_DISPONIBLES[index];
+            }
+            
+            // Enviamos la orden de iniciar y le pegamos el nombre del mapa elegido
+            cliente.enviarMensaje("COMANDO:INICIAR:" + mapaSeleccionado);
         }
-        
-        // No abrimos el juego directamente. Esperamos a que el servidor nos confirme con "JUEGO_INICIADO"
-        // para que todos entremos al mismo tiempo.
     }
     
     public void abrirJuego() {
@@ -162,13 +310,30 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             JFrame frameJuego = new JFrame("Among Us - En Juego");
             frameJuego.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
             
+            // Reutilizamos el método para ponerle el icono también a la ventana del juego
+            try {
+                String n = "icono.jpg";
+                Image icono = null;
+                java.net.URL u = getClass().getClassLoader().getResource(n);
+                if (u != null) icono = ImageIO.read(u);
+                else {
+                    String[] rutas = {"src/main/resources/" + n, "resources/" + n, n};
+                    for (String r : rutas) {
+                        File f = new File(r);
+                        if (f.exists()) { icono = ImageIO.read(f); break; }
+                    }
+                }
+                if (icono != null) frameJuego.setIconImage(icono);
+            } catch (Exception e) {}
+            
             PanelJuego panelJuego = new PanelJuego();
             frameJuego.add(panelJuego);
             frameJuego.pack();
             frameJuego.setLocationRelativeTo(null);
             frameJuego.setVisible(true);
             
-            BucleJuego bucle = new BucleJuego(panelJuego);
+            // Pasamos el cliente al BucleJuego para que maneje los mensajes en vivo
+            BucleJuego bucle = new BucleJuego(panelJuego, cliente);
             bucle.iniciar();
             
             panelJuego.requestFocus();
@@ -177,21 +342,29 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     
     private void cargarIconoVentana() {
         try {
-            String n = "icono.jpg";
-            Image icono = null;
-            java.net.URL u = getClass().getClassLoader().getResource(n);
-            if (u != null) icono = ImageIO.read(u);
+            String n = "icono.jpg"; // Nombre del archivo de icono
+            Image icono = null; // Variable para almacenar icono
+            //  Buscar en classpath
+            java.net.URL u = getClass().getClassLoader().getResource(n); // Busca recurso
+            if (u != null) icono = ImageIO.read(u); // Lee imagen desde URL
             else {
-                String[] rutas = {"src/main/resources/" + n, "resources/" + n, n};
+                //  Buscar en disco
+                String[] rutas = {"src/main/resources/" + n, "resources/" + n, n}; // Rutas posibles
                 for (String r : rutas) {
-                    File f = new File(r);
-                    if (f.exists()) {
-                        icono = ImageIO.read(f);
-                        break;
+                    File f = new File(r); // Crea objeto File
+                    if (f.exists()) { // Si el archivo existe
+                        icono = ImageIO.read(f); // Lee imagen desde archivo
+                        break; // Sale del bucle
                     }
                 }
             }
-            if (icono != null) setIconImage(icono);
+            // Importante: Si encontramos la imagen, la aplicamos
+            if (icono != null) {
+                setIconImage(icono); // Establece icono de la ventana
+                System.out.println("Icono de sala de espera cargado correctamente.");
+            } else {
+                System.err.println("No se encontró el archivo del icono en la sala de espera.");
+            }
         } catch (Exception e) { 
             System.err.println("Error al cargar icono: " + e.getMessage()); 
         }
@@ -285,6 +458,8 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         return b;
     }
     
+    private boolean soyImpostor = false; // Guardará el rol asignado por el servidor
+
     @Override
     public void onMensajeRecibido(String mensaje) {
         // Procesar mensajes del servidor
@@ -308,8 +483,47 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
                 }
                 actualizarListaJugadores();
             });
-        } else if (mensaje.equals("JUEGO_INICIADO")) {
-            // El host inició la partida
+        } else if (mensaje.startsWith("ROL:")) {
+            // El servidor nos susurra al oído qué rol nos tocó
+            soyImpostor = mensaje.substring(4).equals("IMPOSTOR");
+            System.out.println("El servidor me asignó el rol de: " + (soyImpostor ? "Impostor" : "Tripulante"));
+            
+        } else if (mensaje.startsWith("JUEGO_INICIADO")) {
+            // ¡Arranca la partida! 
+            
+            // Extraer el mapa elegido (ej. JUEGO_INICIADO:mapa2.png)
+            String mapaElegido = "mapa1.png";
+            if (mensaje.contains(":")) {
+                mapaElegido = mensaje.split(":")[1];
+            }
+            
+            // 0. Creamos el mapa con la imagen seleccionada
+            com.amongus.project.modelo.Mapa mapa = new com.amongus.project.modelo.Mapa(mapaElegido);
+            EstadoJuego.getInstancia().setMapa(mapa);
+            
+            // 1. Configuramos a nuestro propio personaje con el rol recibido
+            Jugador jugadorLocal = new Jugador(this.nombreJugador, 100, 100, Color.RED, soyImpostor);
+            jugadorLocal.setClienteRed(this.cliente); // Le damos el cable de internet
+            EstadoJuego.getInstancia().setJugadorLocal(jugadorLocal);
+            
+            // 2. Creamos a los demás jugadores que vimos en la lista de espera
+            Color[] coloresDisponibles = {Color.BLUE, Color.GREEN, Color.YELLOW, Color.CYAN, Color.MAGENTA, Color.ORANGE, Color.PINK, Color.WHITE};
+            int indexColor = 0;
+            
+            for (String nombre : jugadoresConectados) {
+                // No nos volvemos a crear a nosotros mismos
+                if (!nombre.equals(this.nombreJugador)) {
+                    // Ponemos a los demás como Tripulantes (porque los roles son secretos)
+                    Jugador otro = new Jugador(nombre, 150 + (indexColor * 50), 100, coloresDisponibles[indexColor % coloresDisponibles.length], false);
+                    EstadoJuego.getInstancia().agregarJugador(otro);
+                    indexColor++;
+                }
+            }
+            
+            // 3. CAMBIAMOS LA FASE DEL JUEGO PARA QUE SE PUEDAN MOVER (ESTO CORRIGE EL ERROR DE MOVIMIENTO)
+            EstadoJuego.getInstancia().setFaseActual(EstadoJuego.Fase.JUGANDO);
+            
+            // El host inició la partida, cambiamos de ventana
             SwingUtilities.invokeLater(() -> abrirJuego());
         }
     }

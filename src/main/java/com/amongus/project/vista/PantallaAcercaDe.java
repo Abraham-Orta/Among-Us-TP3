@@ -115,7 +115,7 @@ public class PantallaAcercaDe extends JFrame {// Clase que representa una ventan
             "Asignatura: Técnicas de Programación III\n" +
             "Profesora: Jannelly Bello\n" +
             "Versión: 1.0.0\n\n" +
-            "Tecnologías Utilizadas:\n" +
+             "Tecnologías Utilizadas:\n" +
             "• Lenguaje: Java\n" +
             "• IDE: Apache NetBeans\n" +
             "• UI: Java Swing\n" +
@@ -123,8 +123,7 @@ public class PantallaAcercaDe extends JFrame {// Clase que representa una ventan
             "DESARROLLADORES (EQUIPO):\n" +
             "• Abraham Orta\n" +
             "• Samuel Silva\n" +
-            "• Cristobal Requena\n" +
-            "• Jorge Bravo\n";
+            "• Cristobal Requena\n";
             
         areaInfo.setText(textoContenido);  // Establece el texto
         panelPrincipal.add(areaInfo);      // Añade el área de texto al panel

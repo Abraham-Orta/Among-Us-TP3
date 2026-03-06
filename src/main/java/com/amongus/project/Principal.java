@@ -9,7 +9,8 @@ import javax.swing.SwingUtilities; // Herramienta para manejar hilos de interfaz
 public class Principal {// Clase pública principal del proyecto
 
 
-    public static void main(String[] args) { // Punto de entrada principal de la aplicación
+    public static void main(String[] args) { // Punto de entrada prin
+        // cipal de la aplicación
         
         // "SwingUtilities.invokeLater" es una buena práctica obligatoria.
         // Significa: "Por favor, crea la ventana en el hilo dedicado a los gráficos,
