@@ -89,7 +89,7 @@ public class Servidor { // Clase publica del servidor
         System.out.println("Intentando iniciar partida con mapa: " + mapaElegido); // Log
         
         // Requisito del PDF: Minimo 5 jugadores para iniciar.
-        if (listaJugadores.size() < 2) {
+        if (listaJugadores.size() < 5) {
             System.out.println("Hay muy poca gente para jugar (Mínimo 5)"); // Aviso
             enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Mínimo 5).");
             return; // Salimos del metodo, no arranca
