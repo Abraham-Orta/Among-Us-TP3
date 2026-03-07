@@ -17,6 +17,13 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     private BufferedReader entrada; // Canal para escuchar lo que dice el jugador
     private PrintWriter salida; // Canal para hablarle al jugador
     private String nombreJugador; // Guardamos el nombre (ej: "Samuel")
+    public boolean esImpostor = false;
+
+    // Estado del movimiento del jugador, controlado por el servidor
+    public boolean moviendoArriba = false;
+    public boolean moviendoAbajo = false;
+    public boolean moviendoIzquierda = false;
+    public boolean moviendoDerecha = false;
 
     // Constructor: Se ejecuta cuando creamos el objeto con "new"
     public AtencionJugador(Socket socket) { // Recibimos el socket desde el Servidor
@@ -33,8 +40,8 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
         } catch (IOException e) { // Si falla algo al abrir canales
             System.out.println("Error al crear los canales del jugador"); // Avisamos
             e.printStackTrace(); // Mostramos el error
-        } // Fin del catch
-    } // Fin del constructor
+        }
+    }
 
     // Este es el metodo que corre cuando le damos .start() al hilo
     @Override
@@ -66,11 +73,25 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     // Enviar lista actualizada de jugadores
                     Servidor.enviarListaJugadores();
                 }
-                // Si el mensaje empieza con "MOVER:" (Ej: MOVER:10,20)
-                else if (lineaRecibida.startsWith("MOVER:")) {
-                    // Reenviamos el movimiento a todos para que actualicen sus pantallas
-                    // Le agregamos el nombre para saber QUIEN se movio
-                    Servidor.enviarATodos("MOVER:" + this.nombreJugador + "," + lineaRecibida.substring(6));
+                else if (lineaRecibida.startsWith("MOVIMIENTO:")) {
+                    String[] partes = lineaRecibida.split(":");
+                    boolean press = partes[1].equals("PRESS");
+                    String dir = partes[2];
+
+                    switch (dir) {
+                        case "UP": moviendoArriba = press; break;
+                        case "DOWN": moviendoAbajo = press; break;
+                        case "LEFT": moviendoIzquierda = press; break;
+                        case "RIGHT": moviendoDerecha = press; break;
+                    }
+                }
+                // Cuando un cliente envía su nueva posición, la reenviamos a todos los demás
+                else if (lineaRecibida.startsWith("POSICION:")) {
+                    for (AtencionJugador otro : Servidor.listaJugadores) {
+                        if (otro != this) { // No se la enviamos al que la mandó
+                            otro.enviarMensaje(lineaRecibida);
+                        }
+                    }
                 }
                 // Si alguien escribe INICIAR (digamos que es el boton de Start)
                 else if (lineaRecibida.equals("COMANDO:INICIAR")) {
@@ -91,7 +112,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     Servidor.enviarATodos("CHAT:" + this.nombreJugador + ": " + lineaRecibida);
                 }
                 
-            } // Fin del while
+            }
             
         } catch (IOException e) { // Si hay error de conexion (se fue el internet o cerro el juego)
             System.out.println("Parece que el jugador se desconecto: " + e.getMessage()); // Avisamos
@@ -108,20 +129,20 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                 socketJugador.close(); // Cerramos conexion
             } catch (IOException e) { // Si falla al cerrar
                 System.out.println("No se pudo cerrar el socket"); // Da igual, avisamos
-            } // Fin catch
+            }
             
-        } // Fin finally
+        }
         
-    } // Fin del metodo run
+    }
 
     // Metodo auxiliar para enviarle un mensaje a ESTE jugador
     public void enviarMensaje(String mensaje) { // Recibe el texto
         salida.println(mensaje); // Lo manda por el canal de salida
-    } // Fin enviarMensaje
+    }
 
     // Metodo para obtener el nombre del jugador
     public String getNombreJugador() {
         return nombreJugador;
     }
 
-} // Fin de la clase
+}

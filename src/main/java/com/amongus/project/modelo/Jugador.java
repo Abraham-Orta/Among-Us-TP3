@@ -49,17 +49,17 @@ public class Jugador extends Personaje {
     public Jugador getVotoJugador() { return votoJugador; }
 
     // Este método se llama en cada frame del juego (60 veces por segundo)
-    public void actualizar() {
+    public void actualizar(ManejadorEntrada entrada) {
         if (!vivo) return; // Si está muerto, no se mueve (o se mueve como fantasma, lógica futura)
 
         int dx = 0;
         int dy = 0;
 
         // Leemos el estado del teclado
-        if (ManejadorEntrada.arriba) dy -= 1;
-        if (ManejadorEntrada.abajo) dy += 1;
-        if (ManejadorEntrada.izquierda) dx -= 1;
-        if (ManejadorEntrada.derecha) dx += 1;
+        if (entrada.arriba) dy -= 1;
+        if (entrada.abajo) dy += 1;
+        if (entrada.izquierda) dx -= 1;
+        if (entrada.derecha) dx += 1;
 
         // Si nos estamos moviendo en alguna dirección
         if (dx != 0 || dy != 0) {
@@ -80,6 +80,48 @@ public class Jugador extends Personaje {
             
             // Lógica de Red: Enviar posición al servidor
             enviarPosicionSiCambio();
+        }
+
+        // Logica para paralizar (matar) por contacto
+        if (this.impostor && entrada.accionMatar) { // Si el jugador es impostor y presiona la tecla de accion (E)
+            intentarParalizarTripulante(); // Llama al metodo para paralizar
+            entrada.accionMatar = false; // Resetea la tecla para evitar hacer spam de la accion
+        }
+
+        // Logica para vias de acceso rapido (alcantarillas / conductos)
+        if (this.impostor && entrada.accionVentilar) { // Si el jugador es impostor y presiona la tecla de ventilacion (F)
+            intentarUsarVentilacion(); // Llama al metodo para viajar por el conducto
+            entrada.accionVentilar = false; // Resetea la tecla de ventilacion
+        }
+    }
+
+    private void intentarUsarVentilacion() { // Metodo para usar vias de acceso rapido
+        Mapa mapa = EstadoJuego.getInstancia().getMapa(); // Obtenemos el mapa actual de la partida
+        if (mapa != null) { // Si hay un mapa cargado correctamente
+            java.awt.Point destino = mapa.verificarVentilacion(this.hitbox); // Verifica en el mapa si el jugador esta pisando un conducto
+            if (destino != null) { // Si el destino devuelto no es nulo (es decir, piso una alcantarilla valida)
+                this.x = destino.x; // Teletransporta la coordenada X del jugador a la del destino de la alcantarilla
+                this.y = destino.y; // Teletransporta la coordenada Y del jugador a la del destino de la alcantarilla
+                actualizarHitbox(); // Actualiza la hitbox para que viaje instantaneamente con el sprite a la nueva posicion
+                System.out.println("¡" + this.nombre + " se ha transportado por un conducto de ventilacion!"); // Aviso de accion en consola
+            }
+        }
+    }
+
+    private void intentarParalizarTripulante() { // Metodo para inhabilitar a un oponente al contacto
+        java.util.List<Jugador> todosLosJugadores = EstadoJuego.getInstancia().getJugadores(); // Obtiene la lista de todos los jugadores
+        
+        for (Jugador otroJugador : todosLosJugadores) { // Recorre cada jugador de la partida
+            // Verifica que el oponente no sea el mismo, que este vivo y que sea un tripulante normal
+            if (otroJugador != this && otroJugador.isVivo() && !otroJugador.isImpostor()) { 
+                
+                // Verifica si hay contacto fisico (colision de las cajas delimitadoras / hitboxes)
+                if (this.hitbox.intersects(otroJugador.getHitbox())) { // Si las hitboxes chocan
+                    otroJugador.setVivo(false); // Paraliza o inhabilita al jugador oponente
+                    System.out.println("¡" + this.nombre + " ha paralizado a " + otroJugador.getNombre() + "!"); // Aviso de accion en consola
+                    break; // Termina el bucle para paralizar solo a un jugador a la vez
+                }
+            }
         }
     }
     
