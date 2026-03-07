@@ -29,6 +29,10 @@ public class TareaTarjeta extends JPanel implements MouseListener, MouseMotionLi
     private boolean arrastrando = false;
     private boolean completada = false;
     
+    public boolean isCompletada() {
+        return completada;
+    }
+    
     // Textos en Español
     private String mensaje = "PASE TARJETA";
     private Color colorMensaje = new Color(255, 160, 0); // Naranja pantalla

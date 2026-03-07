@@ -44,7 +44,18 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         setTitle("Among Us - Sala de Espera");
         setSize(700, 500);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        
+        // INTERCEPTAR CIERRE: Regresar al menú anterior en lugar de cerrar el programa
+        setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE); 
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosing(java.awt.event.WindowEvent e) {
+                // Cerramos esta ventana
+                dispose();
+                // Abrimos la pantalla de selección de modo de nuevo
+                new PantallaSeleccionModo().setVisible(true);
+            }
+        });
         
         // Cargar icono
         cargarIconoVentana();
@@ -204,7 +215,7 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         JButton btnSalir = crearBotonEstiloAmongUs("Salir");
         btnSalir.addActionListener(e -> {
             dispose();
-            System.exit(0);
+            new PantallaSeleccionModo().setVisible(true);
         });
         panelBotones.add(btnSalir);
         

@@ -28,6 +28,7 @@ public class ManejadorEntrada extends KeyAdapter { // Heredamos de KeyAdapter pa
     
     // NUEVAS VARIABLES PARA REPORTE Y MODO DESARROLLADOR
     public static boolean accionReportar = false; // ¿Está presionada la tecla R (Reportar)?
+    public static boolean accionSabotaje = false; // ¿Está presionada la tecla H (Sabotaje)?
     public static boolean modoDesarrollador = false; // ¿Está activado el modo desarrollador (F3)?
     
     // Variables para guardar el estado y posición del ratón.
@@ -106,6 +107,10 @@ public class ManejadorEntrada extends KeyAdapter { // Heredamos de KeyAdapter pa
         if (codigo == KeyEvent.VK_R) { // Tecla R para reportar un cuerpo
             accionReportar = true;
         }
+        if (codigo == KeyEvent.VK_H) { // Tecla H para Sabotaje (Luces)
+            accionSabotaje = true;
+        }
+
         
         // TECLAS DE DEPURACIÓN (Solo para pruebas)
         if (codigo == KeyEvent.VK_V) { // Tecla V para forzar la pantalla de Votación
@@ -153,6 +158,9 @@ public class ManejadorEntrada extends KeyAdapter { // Heredamos de KeyAdapter pa
         }
         if (codigo == KeyEvent.VK_R) {
             accionReportar = false;
+        }
+        if (codigo == KeyEvent.VK_H) {
+            accionSabotaje = false;
         }
     }
 }

@@ -12,6 +12,9 @@ public class EstadoJuego {
     public enum Fase { MENU, LOBBY, JUGANDO, VOTACION, FINALIZADO }
     private Fase faseActual;
     private Mapa mapa;
+    
+    // SABOTAJES
+    private boolean lucesSaboteadas = false;
 
     private EstadoJuego() {
         jugadores = new ArrayList<>();
@@ -25,6 +28,10 @@ public class EstadoJuego {
         }
         return instancia;
     }
+    
+    // Getters y Setters para sabotajes
+    public boolean areLucesSaboteadas() { return lucesSaboteadas; }
+    public void setLucesSaboteadas(boolean estado) { this.lucesSaboteadas = estado; }
 
     public void agregarJugador(Jugador j) {
         jugadores.add(j);

@@ -33,6 +33,7 @@ public class Jugador extends Personaje {
     private int cooldownAsesinato = 0; // Temporizador para volver a paralizar
     private int cooldownVentilacion = 0; // Temporizador para volver a meterse en una alcantarilla
     private int cooldownReporte = 0; // Temporizador para no spamear el reporte
+    private int cooldownSabotaje = 0; // Temporizador para sabotajes
 
     /**
      * Constructor del Jugador.
@@ -69,6 +70,11 @@ public class Jugador extends Personaje {
         this.haVotado = true;
         this.votoSkip = true;
         this.votoJugador = null;
+        
+        // --- NVO: Enviar Voto a la Red ---
+        if (clienteRed != null) {
+            clienteRed.enviarMensaje("VOTO:" + this.nombre + ",SKIP");
+        }
     }
     
     // El jugador selecciona a otro como sospechoso
@@ -76,6 +82,11 @@ public class Jugador extends Personaje {
         this.haVotado = true;
         this.votoSkip = false;
         this.votoJugador = objetivo;
+        
+        // --- NVO: Enviar Voto a la Red ---
+        if (clienteRed != null) {
+            clienteRed.enviarMensaje("VOTO:" + this.nombre + "," + objetivo.getNombre());
+        }
     }
     
     // Getters de votación
@@ -98,6 +109,7 @@ public class Jugador extends Personaje {
         if (cooldownAsesinato > 0) cooldownAsesinato--;
         if (cooldownVentilacion > 0) cooldownVentilacion--;
         if (cooldownReporte > 0) cooldownReporte--;
+        if (cooldownSabotaje > 0) cooldownSabotaje--;
 
         // REQUISITO: "Los jugadores inhabilitados se quedan en el lugar... No pueden continuar el juego."
         if (!vivo) return; // Si está muerto/paralizado, la función termina aquí. No se mueve ni hace acciones.
@@ -115,6 +127,23 @@ public class Jugador extends Personaje {
             // Si el impostor presiona la tecla de ventilar (E) y no está en cooldown
             if (ManejadorEntrada.accionVentilar && cooldownVentilacion <= 0) {
                 intentarUsarAlcantarilla();
+            }
+            
+            // REQUISITO: SABOTAJE (Tecla H)
+            if (ManejadorEntrada.accionSabotaje && cooldownSabotaje <= 0) {
+                // Si estamos conectados a red, enviamos el mensaje
+                if (clienteRed != null) {
+                    // Toggle: Si ya están saboteadas, las arreglamos (para probar), si no, las rompemos
+                    boolean estadoActual = EstadoJuego.getInstancia().areLucesSaboteadas();
+                    String comando = estadoActual ? "SABOTAJE:LUCES:OFF" : "SABOTAJE:LUCES:ON";
+                    clienteRed.enviarMensaje(comando);
+                } else {
+                    // Modo local / Pruebas: Lo aplicamos directamente
+                    boolean estadoActual = EstadoJuego.getInstancia().areLucesSaboteadas();
+                    EstadoJuego.getInstancia().setLucesSaboteadas(!estadoActual);
+                    System.out.println("Sabotaje local de luces: " + (!estadoActual ? "ACTIVADO" : "DESACTIVADO"));
+                }
+                cooldownSabotaje = 60; // 1 segundo de espera para no spamear
             }
         }
         

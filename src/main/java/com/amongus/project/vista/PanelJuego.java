@@ -5,6 +5,9 @@ import java.awt.Graphics;  // Proporciona herramientas básicas de dibujo
 import java.awt.Graphics2D; // Versión avanzada de Graphics para transformaciones (como la cámara)
 import java.awt.Color;     // Para usar colores
 import java.awt.Dimension; // Para establecer el tamaño del panel
+import java.awt.RadialGradientPaint; // Para el efecto de luz/sombra
+import java.awt.Paint; // Para guardar el pincel original
+import java.awt.geom.Point2D; // Para el centro del gradiente
 import com.amongus.project.modelo.EstadoJuego; // Para obtener datos actuales del juego
 import com.amongus.project.modelo.Jugador;     // Para obtener info de cada jugador
 import com.amongus.project.modelo.Mapa;        // Para dibujar el entorno
@@ -127,6 +130,12 @@ public class PanelJuego extends JPanel {
              g.drawString(local.getNombre(), local.getX(), local.getY() - 10);
         }
 
+        // --- CAPA 3: NIEBLA DE GUERRA (CAMPO VISUAL) ---
+        // Dibujamos la oscuridad encima de todo (mapa y jugadores), excepto la interfaz
+        if (local != null && mapa != null) {
+            dibujarCampoVisual(g2d, local, mapa.getAncho(), mapa.getAlto());
+        }
+
         // DESHACER LA CÁMARA: Revertimos la traslación para volver al (0,0) real de la pantalla.
         // Esto sirve para dibujar cosas fijas de la UI (Interfaz de Usuario) como mapas minimizados o botones
         // que no deben moverse aunque el jugador camine.
@@ -137,6 +146,63 @@ public class PanelJuego extends JPanel {
             g.setColor(Color.WHITE);
             g.drawString("No hay jugadores. Inicia partida.", 300, 300);
         }
+    }
+
+    /**
+     * Dibuja una capa de oscuridad con un agujero de luz alrededor del jugador.
+     * El tamaño del agujero depende del rol (Impostor ve más).
+     */
+    private void dibujarCampoVisual(Graphics2D g2d, Jugador local, int anchoMapa, int altoMapa) {
+        // 1. Definir Radio de Visión según el rol y el estado de las luces
+        float radioVision;
+        
+        if (local.isImpostor()) {
+            // El impostor SIEMPRE ve bien (visión nocturna)
+            radioVision = 350.0f;
+        } else {
+            // Si eres Tripulante, depende del sabotaje
+            if (EstadoJuego.getInstancia().areLucesSaboteadas()) {
+                radioVision = 50.0f; // ¡APAGÓN! Casi ciego
+            } else {
+                radioVision = 180.0f; // Normal
+            }
+        }
+        
+        // 2. Calcular el centro de la luz (centro del personaje)
+        // El personaje mide aprox 30x40, así que sumamos la mitad
+        float centroX = local.getX() + 15;
+        float centroY = local.getY() + 20;
+
+        // 3. Configurar el Gradiente Radial
+        // Distancias: 0.0 (centro) -> 0.7 (empieza a oscurecer) -> 1.0 (oscuridad total)
+        float[] distancias = {0.0f, 0.7f, 1.0f};
+        
+        // Colores (Alpha 0 es transparente, Alpha 255 es negro sólido)
+        Color[] colores = {
+            new Color(0, 0, 0, 0),   // Centro: Totalmente visible
+            new Color(0, 0, 0, 120), // Transición: Penumbra
+            new Color(0, 0, 0, 255)  // Exterior: Oscuridad total (Pitch Black)
+        };
+
+        // Prevenir errores si el radio es inválido
+        if (radioVision <= 0) radioVision = 1.0f;
+
+        // Creamos el pincel de gradiente
+        RadialGradientPaint gradiente = new RadialGradientPaint(
+            new Point2D.Float(centroX, centroY),
+            radioVision,
+            distancias,
+            colores
+        );
+
+        // 4. Dibujar
+        Paint pincelOriginal = g2d.getPaint(); // Guardamos el pincel anterior
+        g2d.setPaint(gradiente); // Usamos nuestro gradiente de luz
+        
+        // Dibujamos un rectángulo gigante que cubre todo el mapa
+        g2d.fillRect(0, 0, anchoMapa, altoMapa);
+
+        g2d.setPaint(pincelOriginal); // Restauramos el pincel para lo siguiente
     }
 
     /**

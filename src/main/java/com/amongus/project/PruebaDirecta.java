@@ -28,7 +28,7 @@ public class PruebaDirecta {
             // 2. Crear un jugador de prueba (nosotros)
             // AQUÍ ESTABA EL DETALLE: El último parámetro estaba en 'false' (Tripulante).
             // Lo cambiamos a 'true' para que se asigne el rol de Impostor y podamos usar las alcantarillas.
-            Jugador jugadorTest = new Jugador("Tester", 100, 100, Color.RED, true); 
+            Jugador jugadorTest = new Jugador("Tester", 100, 100, Color.RED, true);
             estado.setJugadorLocal(jugadorTest); // Establecemos este jugador como el principal
             
             // EXTRA: Agregamos varios muñecos de prueba (tripulantes)
@@ -37,6 +37,7 @@ public class PruebaDirecta {
             Jugador munecoPrueba1 = new Jugador("Víctima 1", 200, 100, Color.BLUE, false);
             Jugador munecoPrueba2 = new Jugador("Víctima 2", 300, 150, Color.GREEN, false);
             Jugador munecoPrueba3 = new Jugador("Víctima 3", 150, 300, Color.YELLOW, false);
+
             
             estado.agregarJugador(munecoPrueba1); // Añadimos la víctima al mapa
             estado.agregarJugador(munecoPrueba2); // Añadimos la víctima al mapa

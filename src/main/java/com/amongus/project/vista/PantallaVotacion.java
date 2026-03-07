@@ -167,15 +167,28 @@ public class PantallaVotacion {
         
         mostrandoResultados = true; // Cambiamos la pantalla para mostrar la cinemática de expulsión
         
-        // --- LÓGICA DE EXPULSIÓN ---
+        // --- LÓGICA DE EXPULSIÓN Y REPORTE DE IMPOSTORES RESTANTES ---
         // Si los votos por "Skip" ganan, hay empate, o nadie votó
         if (votosSkip >= maxVotos || empate || masVotado == null) {
             mensajeResultado = "Nadie fue expulsado (Empate o Skip).";
         } else {
             // Expulsamos al más votado (lo inhabilitamos/matamos)
             masVotado.setVivo(false);
-            mensajeResultado = masVotado.getNombre() + " fue expulsado. " + 
-                               (masVotado.isImpostor() ? "Era un Impostor." : "No era un Impostor.");
+            
+            // REQUERIMIENTO: Contar cuántos impostores quedan vivos
+            int impostoresRestantes = 0;
+            for (Jugador j : jugadores) {
+                if (j.isVivo() && j.isImpostor()) {
+                    impostoresRestantes++;
+                }
+            }
+            
+            // Construimos el mensaje detallado
+            if (masVotado.isImpostor()) {
+                mensajeResultado = masVotado.getNombre() + " era un Impostor. Quedan " + impostoresRestantes + " impostores.";
+            } else {
+                mensajeResultado = masVotado.getNombre() + " no era un Impostor. Quedan " + impostoresRestantes + " impostores.";
+            }
         }
     }
 

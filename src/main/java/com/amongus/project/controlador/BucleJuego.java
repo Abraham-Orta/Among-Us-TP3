@@ -18,6 +18,9 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private Thread hiloJuego;
     private Cliente clienteRed;
     
+    // Tareas
+    private int tripulantesConTareasListas = 0;
+    
     // FPS objetivo
     private final int FPS = 60;
     // Tiempo objetivo por frame en nanosegundos
@@ -95,10 +98,38 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 estado.getJugadorLocal().resetVoto();
             }
         }
-        // 4. SINCRONIZAR FIN DE JUEGO: Si el servidor decreta el fin
+        // 4. SINCRONIZAR TAREAS: Alguien terminó sus tareas
+        else if (mensaje.startsWith("TAREA_LISTA:")) {
+            String quienTermino = mensaje.substring(12);
+            System.out.println("Sincronizando: " + quienTermino + " completó todas sus tareas.");
+            tripulantesConTareasListas++;
+            
+            // Contamos cuántos tripulantes (no impostores) hay en total en la partida
+            int totalTripulantes = 0;
+            for (Jugador j : estado.getJugadores()) {
+                if (!j.isImpostor()) totalTripulantes++;
+            }
+            
+            // Si todos los tripulantes terminaron sus tareas, ¡Ganan los buenos!
+            if (tripulantesConTareasListas >= totalTripulantes && totalTripulantes > 0) {
+                if (clienteRed != null && estado.getJugadorLocal() != null && !estado.getJugadorLocal().isImpostor()) {
+                    clienteRed.enviarMensaje("COMANDO:GANAR_TRIPULANTES");
+                }
+            }
+        }
+        // 5. SINCRONIZAR FIN DE JUEGO: Si el servidor decreta el fin
         else if (mensaje.startsWith("FIN:")) {
             String ganador = mensaje.substring(4);
             finalizarJuego("¡Ganan los " + ganador + "!");
+        }
+        // 6. SINCRONIZAR SABOTAJE DE LUCES
+        else if (mensaje.equals("SABOTAJE:LUCES:ON")) {
+            EstadoJuego.getInstancia().setLucesSaboteadas(true);
+            System.out.println("¡LUCES SABOTEADAS!");
+        }
+        else if (mensaje.equals("SABOTAJE:LUCES:OFF")) {
+            EstadoJuego.getInstancia().setLucesSaboteadas(false);
+            System.out.println("Luces reparadas.");
         }
     }
     

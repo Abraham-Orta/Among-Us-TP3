@@ -83,6 +83,14 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                 else if (lineaRecibida.equals("REPORTAR:")) {
                     Servidor.enviarATodos(lineaRecibida);
                 }
+                // Si alguien termina todas sus tareas
+                else if (lineaRecibida.startsWith("TAREA_LISTA:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
+                // Si alguien activa un sabotaje
+                else if (lineaRecibida.startsWith("SABOTAJE:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
                 // Si alguien escribe INICIAR (digamos que es el boton de Start)
                 else if (lineaRecibida.startsWith("COMANDO:INICIAR")) {
                     System.out.println("Un jugador pidio iniciar la partida"); // Log

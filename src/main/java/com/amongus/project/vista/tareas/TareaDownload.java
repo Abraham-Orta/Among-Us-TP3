@@ -22,6 +22,10 @@ public class TareaDownload extends JPanel {
     private boolean completada = false;
     private Timer timer;
     
+    public boolean isCompletada() {
+        return completada;
+    }
+    
     // Colores Among Us
     private Color colorFondo = new Color(20, 23, 28);
     private Color colorBarra = new Color(0, 255, 100); // Verde brillante
