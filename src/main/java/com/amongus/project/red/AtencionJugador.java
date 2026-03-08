@@ -57,7 +57,10 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
             // Bucle infinito: Leemos mensajes mientras la conexion siga viva
             while ((lineaRecibida = entrada.readLine()) != null) { // Leemos una linea
                 
-                System.out.println("El jugador dijo: " + lineaRecibida); // Imprimimos en la consola del servidor lo que llego
+                // Imprimimos en la consola del servidor lo que llego (ocultamos los MOVER para no saturar)
+                if (!lineaRecibida.startsWith("MOVER:")) {
+                    System.out.println("El jugador dijo: " + lineaRecibida); 
+                }
                 
                 // AQUI ANALIZAMOS QUE NOS DIJO EL JUGADOR
                 
@@ -85,6 +88,14 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                         case "RIGHT": moviendoDerecha = press; break;
                     }
                 }
+                // Cuando un cliente envía su nueva posición (MOVER:nombre,x,y), la reenviamos a todos los demás
+                else if (lineaRecibida.startsWith("MOVER:")) {
+                    for (AtencionJugador otro : Servidor.listaJugadores) {
+                        if (otro != this) { // No se la enviamos al que la mandó
+                            otro.enviarMensaje(lineaRecibida);
+                        }
+                    }
+                }
                 // Cuando un cliente envía su nueva posición, la reenviamos a todos los demás
                 else if (lineaRecibida.startsWith("POSICION:")) {
                     for (AtencionJugador otro : Servidor.listaJugadores) {
@@ -93,10 +104,36 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                         }
                     }
                 }
+                // Si alguien es asesinado, informamos a todos
+                else if (lineaRecibida.startsWith("MATAR:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
+                // Si alguien reporta un cuerpo, avisamos a todos para abrir la votación
+                else if (lineaRecibida.equals("REPORTAR:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
+                // Si alguien termina todas sus tareas
+                else if (lineaRecibida.startsWith("TAREA_LISTA:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
+                // Si alguien activa un sabotaje
+                else if (lineaRecibida.startsWith("SABOTAJE:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
                 // Si alguien escribe INICIAR (digamos que es el boton de Start)
-                else if (lineaRecibida.equals("COMANDO:INICIAR")) {
+                else if (lineaRecibida.startsWith("COMANDO:INICIAR")) {
                     System.out.println("Un jugador pidio iniciar la partida"); // Log
-                    Servidor.iniciarPartida(); // Llamamos al metodo estatico del servidor
+                    
+                    // Extraemos el mapa elegido si el host lo envió (ej. COMANDO:INICIAR:mapa2.png)
+                    String mapaElegido = "mapa1.png"; // Por defecto
+                    if (lineaRecibida.contains(":")) {
+                        String[] partes = lineaRecibida.split(":");
+                        if (partes.length >= 3) {
+                            mapaElegido = partes[2];
+                        }
+                    }
+                    
+                    Servidor.iniciarPartida(mapaElegido); // Llamamos al metodo estatico del servidor con el mapa
                 }
                 // Si los tripulantes ganan (completaron tareas o echaron a todos)
                 else if (lineaRecibida.equals("COMANDO:GANAR_TRIPULANTES")) {

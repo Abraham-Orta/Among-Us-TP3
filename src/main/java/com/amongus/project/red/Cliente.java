@@ -22,13 +22,12 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
     private PrintWriter salida; // Por aqui le hablamos al servidor
     private MensajeListener listener; // Quien escucha los mensajes
     
-    // Constructor: Se intenta conectar apenas creamos el objeto
-    public Cliente() {
+    // Constructor: Recibe la IP a la cual conectarse
+    public Cliente(String direccionIP) {
         try {
-            // "localhost" soy yo mismo. 1234 es el puerto que abrimos en el Servidor.
-            // Si quisieras jugar con un amigo, aqui pondrias la IP de tu amigo (ej: 192.168.1.15)
-            System.out.println("Cliente: Intentando conectar al servidor...");
-            socket = new Socket("localhost", 1234);
+            // Usamos la IP que nos pasaron (puede ser "localhost" o "192.168.1.5")
+            System.out.println("Cliente: Intentando conectar a " + direccionIP + "...");
+            socket = new Socket(direccionIP, 1234);
             
             // Preparamos los canales para hablar y escuchar
             entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));

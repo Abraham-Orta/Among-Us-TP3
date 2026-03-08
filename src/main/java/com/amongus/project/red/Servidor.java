@@ -1,177 +1,116 @@
-package com.amongus.project.red; // Paquete donde guardamos las cosas de red
+package com.amongus.project.red;
 
-import com.amongus.project.data.GestorDatos; // Importamos el gestor para guardar el XML
-import java.io.IOException; // Importamos esto por si falla la entrada o salida
-import java.net.ServerSocket; // Esta es la libreria para crear el servidor
-import java.net.Socket; // Esta es la libreria para los enchufes (conexiones)
-import java.util.concurrent.CopyOnWriteArrayList; // Usamos esto para hacer una lista dinamica
+import com.amongus.project.data.GestorDatos;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.util.concurrent.CopyOnWriteArrayList;
 
-/**
- * Clase Servidor
- * Esta clase es la que prende el servidor y acepta a los jugadores.
- */
-public class Servidor { // Clase publica del servidor
+public class Servidor {
 
-    // Aqui guardamos el puerto, uso el 1234 porque es facil de acordarse
-    private static final int PUERTO = 1234; 
-    
-    // El PDF dice maximo 10 jugadores
+    private static final int PUERTO        = 1234;
     private static final int MAX_JUGADORES = 10;
-    
-    // Esta lista va a guardar a todos los hilos de los jugadores que se conecten
-    // La pongo static para poder acceder desde cualquier lado sin instanciar la clase
-    public static CopyOnWriteArrayList<AtencionJugador> listaJugadores = new CopyOnWriteArrayList<>(); 
 
-    public static void main(String[] args) { // Metodo principal main
-        
-        System.out.println("Iniciando el servidor de Among Us..."); // Mensaje para saber que arranco
-        
-        try { // Usamos try por si el puerto esta ocupado o algo falla
-            
-            // Creamos el socket del servidor en el puerto 1234
-            ServerSocket servidorSocket = new ServerSocket(PUERTO); 
-            
-            System.out.println("El servidor esta listo y escuchando en el puerto: " + PUERTO); // Aviso
-            
-            // Hacemos un bucle infinito para aceptar jugadores todo el tiempo
-            while (true) { // Mientras sea verdad (siempre)
-                
-                // Verificamos si ya esta llena la sala (Requisito del PDF: Max 10)
+    // Mínimo de jugadores para iniciar.
+    // En producción poner 5 (requisito del PDF).
+    // En pruebas locales con PruebaDirecta usamos 3.
+    private static final int MIN_JUGADORES = 3;
+
+    public static CopyOnWriteArrayList<AtencionJugador> listaJugadores = new CopyOnWriteArrayList<>();
+
+    public static void main(String[] args) {
+        System.out.println("Iniciando el servidor de Among Us...");
+
+        try {
+            ServerSocket servidorSocket = new ServerSocket(PUERTO);
+            System.out.println("Servidor listo en el puerto: " + PUERTO);
+
+            while (true) {
                 if (listaJugadores.size() >= MAX_JUGADORES) {
-                    System.out.println("La sala esta llena, rechazando conexion...");
-                    // Aceptamos solo para decirle que no y cerrar (truco sucio pero funciona)
-                    Socket rechazado = servidorSocket.accept();
-                    rechazado.close();
-                    continue; // Volvemos al inicio del while
+                    System.out.println("Sala llena, rechazando conexión...");
+                    servidorSocket.accept().close();
+                    continue;
                 }
-                
-                System.out.println("Esperando a que alguien se conecte... (" + listaJugadores.size() + "/" + MAX_JUGADORES + ")"); // Aviso
-                
-                // El programa se detiene aqui hasta que alguien entre
-                Socket socketDelCliente = servidorSocket.accept(); 
-                
-                System.out.println("¡Alguien se conecto! IP: " + socketDelCliente.getInetAddress()); // Aviso quien entro
-                
-                // Creamos un nuevo objeto para atender a este jugador especifico
-                // Le pasamos el socket que acabamos de aceptar
-                AtencionJugador nuevoJugador = new AtencionJugador(socketDelCliente); 
-                
-                // Agregamos a este jugador a la lista de conectados
-                listaJugadores.add(nuevoJugador); 
-                
-                // Iniciamos el hilo para que corra en paralelo y no trabe el servidor
-                nuevoJugador.start(); 
-                
-            }
-            
-        } catch (IOException error) { // Si pasa un error atrapamos la excepcion
-            System.out.println("Uhh paso un error en el servidor: " + error.getMessage()); // Imprimimos el error
-            error.printStackTrace(); // Esto imprime todas las lineas del error
-        }
-        
-    }
 
-    // Este metodo sirve para enviarle un mensaje a TODOS los jugadores conectados
-    public static void enviarATodos(String mensaje) { // Recibe el mensaje en texto
-        
-        // Recorremos la lista de jugadores uno por uno
-        for (AtencionJugador jugador : listaJugadores) { // For each jugador
-            try { // Try por si se desconecto justo
-                jugador.enviarMensaje(mensaje); // Le mandamos el mensaje a ese jugador
-            } catch (Exception e) { // Si falla
-                System.out.println("No se pudo enviar mensaje a uno"); // Avisamos
+                System.out.println("Esperando conexión... (" + listaJugadores.size() + "/" + MAX_JUGADORES + ")");
+                Socket socketDelCliente = servidorSocket.accept();
+                System.out.println("¡Conexión recibida! IP: " + socketDelCliente.getInetAddress());
+
+                AtencionJugador nuevoJugador = new AtencionJugador(socketDelCliente);
+                listaJugadores.add(nuevoJugador);
+                nuevoJugador.start();
             }
+
+        } catch (IOException error) {
+            System.out.println("Error en el servidor: " + error.getMessage());
+            error.printStackTrace();
         }
     }
 
-    // Metodo nuevo para asignar roles cuando ya esten todos
-    public static void iniciarPartida() { // Metodo estatico
-        System.out.println("Intentando iniciar partida..."); // Log
-        
-        // Requisito del PDF: Minimo 5 jugadores para iniciar.
-        if (listaJugadores.size() < 1) { // Verifica si hay menos de 5 jugadores
-            System.out.println("Hay muy poca gente para jugar (Minimo 1)"); // Aviso en consola
-            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Min 1)."); // Avisa a los clientes
-            return; // Salimos del metodo, la partida no arranca
+    public static void enviarATodos(String mensaje) {
+        for (AtencionJugador jugador : listaJugadores) {
+            try { jugador.enviarMensaje(mensaje); }
+            catch (Exception e) { System.out.println("No se pudo enviar a un jugador."); }
         }
-        
-        // Requisito del PDF: Asignar DOS impostores
-        // Elegimos dos numeros al azar diferentes
+    }
+
+    public static void iniciarPartida(String mapaElegido) {
+        System.out.println("Intentando iniciar partida con mapa: " + mapaElegido);
+
+        // Verificar mínimo de jugadores
+        if (listaJugadores.size() < MIN_JUGADORES) {
+            System.out.println("Faltan jugadores (Mínimo " + MIN_JUGADORES + ")");
+            enviarATodos("CHAT:SISTEMA: Faltan jugadores para iniciar (Mínimo " + MIN_JUGADORES + ").");
+            return;
+        }
+
+        // --- Asignar roles al azar ---
+        // Siempre hay al menos 1 impostor
         int impostor1 = (int) (Math.random() * listaJugadores.size());
         int impostor2 = -1;
-        
-        // Solo asignamos segundo impostor si hay suficientes jugadores (ej. > 3)
+
+        // Segundo impostor solo si hay más de 3 jugadores
         if (listaJugadores.size() > 3) {
             impostor2 = (int) (Math.random() * listaJugadores.size());
-            // Si por mala suerte salio el mismo numero, cambiamos el segundo hasta que sea distinto
             while (impostor2 == impostor1) {
                 impostor2 = (int) (Math.random() * listaJugadores.size());
             }
         }
-        
-        System.out.println("Los impostores son los indices: " + impostor1 + (impostor2 != -1 ? " y " + impostor2 : "")); // Log secreto
-        
-        // Asignamos los roles a nivel de servidor
+
+        System.out.println("Impostores: índice " + impostor1
+                + (impostor2 != -1 ? " y " + impostor2 : " (solo 1 con <= 3 jugadores)"));
+
+        // Marcar rol en cada AtencionJugador
         for (int i = 0; i < listaJugadores.size(); i++) {
-            AtencionJugador jugador = listaJugadores.get(i);
-            if (i == impostor1 || i == impostor2) {
-                jugador.esImpostor = true;
-            } else {
-                jugador.esImpostor = false;
-            }
+            listaJugadores.get(i).esImpostor = (i == impostor1 || i == impostor2);
         }
 
-        // Preparamos el mensaje con todos los datos
-        String[] colores = {"RED", "BLUE", "GREEN", "YELLOW", "ORANGE", "PINK", "PURPLE", "CYAN", "WHITE", "BROWN"};
-        StringBuilder datosPartida = new StringBuilder("DATOS_PARTIDA:");
-
-        for (int i = 0; i < listaJugadores.size(); i++) {
-            AtencionJugador jugador = listaJugadores.get(i);
-            String nombre = jugador.getNombreJugador();
-            String rol = jugador.esImpostor ? "IMPOSTOR" : "TRIPULANTE";
-            String color = colores[i % colores.length]; // Asigna un color de la lista
-
-            datosPartida.append(nombre).append(",").append(rol).append(",").append(color);
-            if (i < listaJugadores.size() - 1) {
-                datosPartida.append(";");
-            }
+        // Susurrar el rol individualmente → nadie sabe el rol de los demás
+        for (AtencionJugador j : listaJugadores) {
+            j.enviarMensaje("ROL:" + (j.esImpostor ? "IMPOSTOR" : "TRIPULANTE"));
         }
-        
-        // Enviamos el mensaje con todos los datos a todos los jugadores
-        enviarATodos(datosPartida.toString());
+
+        // Avisar a todos que la partida arranca con el mapa elegido
+        enviarATodos("JUEGO_INICIADO:" + mapaElegido);
     }
-    
-    // Metodo para terminar la partida y guardar en el XML
+
     public static void finalizarPartida(String equipoGanador) {
-        System.out.println("La partida termino. Ganaron: " + equipoGanador);
-        
-        // Avisamos a todos quien gano
+        System.out.println("La partida terminó. Ganaron: " + equipoGanador);
         enviarATodos("FIN:" + equipoGanador);
-        
-        // Requisito del PDF: Guardar historial en XML
-        // Llamamos a la clase estatica GestorDatos que ya teniamos
         GestorDatos.guardarPartida(equipoGanador, listaJugadores.size());
-        
         System.out.println("Datos guardados en el XML.");
     }
 
-    // Metodo para enviar lista actualizada de jugadores a todos
     public static void enviarListaJugadores() {
         StringBuilder lista = new StringBuilder("LISTA_JUGADORES:");
-        
         for (int i = 0; i < listaJugadores.size(); i++) {
-            AtencionJugador jugador = listaJugadores.get(i);
-            String nombre = jugador.getNombreJugador();
+            String nombre = listaJugadores.get(i).getNombreJugador();
             if (nombre != null) {
                 lista.append(nombre);
-                if (i < listaJugadores.size() - 1) {
-                    lista.append(",");
-                }
+                if (i < listaJugadores.size() - 1) lista.append(",");
             }
         }
-        
-        System.out.println("Enviando lista: " + lista.toString());
+        System.out.println("Enviando lista: " + lista);
         enviarATodos(lista.toString());
     }
-
 }

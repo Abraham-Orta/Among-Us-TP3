@@ -6,6 +6,7 @@ Simulación del juego *Among Us* implementada en Java utilizando Swing y una arq
 - **Motor Gráfico Propio**: Renderizado de personajes y mapa utilizando `Graphics2D` y doble buffer.
 - **Sistema de Minijuegos**: Tareas interactivas completas (Cables, Tarjetas, Asteroides, etc.).
 - **Arquitectura MVC**: Separación clara entre `Modelo` (Lógica), `Vista` (Renderizado) y `Controlador` (Input).
+- **Selector de Mapas**: Se agregó un menú desplegable (JComboBox) en el Lobby exclusivo para el Anfitrión (Host) que le permite elegir entre "Villa Asia - Sector A" (mapa1) y "Villa Asia - Sector B" (mapa2).
 - **Modos de Juego**:
   - **Local**: Hospeda tu propia partida.
   - **En Red**: Conéctate a un servidor (en desarrollo).

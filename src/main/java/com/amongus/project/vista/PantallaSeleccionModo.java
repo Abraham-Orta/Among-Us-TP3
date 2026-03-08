@@ -51,8 +51,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelFondo.add(etiquetaTitulo, BorderLayout.NORTH); // Añade en zona norte del BorderLayout
 
         // opciones en el centro
-        // Panel transparente para agrupar las opciones
-        JPanel panelCentral = new JPanel(); // Panel para contener las dos opciones
+        // Panel transparente para agrupar las tres opciones
+        JPanel panelCentral = new JPanel(); // Panel para contener las opciones
         panelCentral.setOpaque(false); // Hace el panel transparente
         panelCentral.setLayout(new GridBagLayout()); // Layout para centrado flexible
 
@@ -61,8 +61,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelLocal.setOpaque(false); // Transparente
         panelLocal.setLayout(new BoxLayout(panelLocal, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen Local
-        JLabel imgLocal = crearEtiquetaImagen("imagenLocal.png", 320, 220); // Crea etiqueta con imagen
+        // Imagen Local (Reducida para que quepan las 3 opciones)
+        JLabel imgLocal = crearEtiquetaImagen("imagenLocal.png", 240, 160); // Crea etiqueta con imagen
         imgLocal.setAlignmentX(Component.CENTER_ALIGNMENT); // Centra horizontalmente
 
         // Botón Local
@@ -79,8 +79,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelOnline.setOpaque(false); // Transparente
         panelOnline.setLayout(new BoxLayout(panelOnline, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen En Linea
-        JLabel imgOnline = crearEtiquetaImagen("imagenEnLinea.png", 320, 220); // Crea etiqueta con imagen
+        // Imagen En Linea (Reducida)
+        JLabel imgOnline = crearEtiquetaImagen("imagenEnLinea.png", 240, 160); // Crea etiqueta con imagen
         imgOnline.setAlignmentX(Component.CENTER_ALIGNMENT); // Centra horizontalmente
 
         // Botón En Linea
@@ -97,8 +97,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelUnirse.setOpaque(false); // Transparente
         panelUnirse.setLayout(new BoxLayout(panelUnirse, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen Unirse (usamos la misma de En Linea)
-        JLabel imgUnirse = crearEtiquetaImagen("imagenEnLinea.png", 320, 220);
+        // Imagen Unirse (Reducida)
+        JLabel imgUnirse = crearEtiquetaImagen("imagenEnLinea.png", 240, 160);
         imgUnirse.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Botón Unirse
@@ -110,23 +110,24 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelUnirse.add(Box.createVerticalStrut(20));
         panelUnirse.add(btnUnirse);
 
-        // aqui para unir los paneles
+        // aqui para unir los paneles de manera responsiva
         GridBagConstraints gbc = new GridBagConstraints(); // Objeto para configurar posición en GridBagLayout
+        gbc.weightx = 1.0; // Distribuye el espacio horizontal equitativamente
+        gbc.anchor = GridBagConstraints.CENTER; // Centra los elementos
+        gbc.fill = GridBagConstraints.NONE; // No estira los paneles, solo los centra
 
         // Configuración Izquierda
         gbc.gridx = 0; // Columna 0 (primera columna)
         gbc.gridy = 0; // Fila 0
-        gbc.insets = new Insets(0, 0, 0, 30); // Margen derecho de 30 pixeles
+        gbc.insets = new Insets(0, 10, 0, 10); // Márgenes más pequeños para que quepan bien
         panelCentral.add(panelLocal, gbc); // Añade panel Local
 
         // Configuración Centro
         gbc.gridx = 1; // Columna 1 (segunda columna)
-        gbc.insets = new Insets(0, 30, 0, 30); // Margen izquierdo y derecho de 30 píxeles
         panelCentral.add(panelOnline, gbc); // Añade panel Online
 
         // Configuración Derecha
         gbc.gridx = 2; // Columna 2 (tercera columna)
-        gbc.insets = new Insets(0, 30, 0, 0); // Margen izquierdo de 30 píxeles
         panelCentral.add(panelUnirse, gbc); // Añade panel Unirse
 
         // Agregar al fondo
@@ -315,26 +316,29 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         if (txt.equals("En Linea")) {
             // Si el boton es el de jugar online, hacemos esto:
             b.addActionListener(e -> {
-                //   pregunta el nombre al usuario con una ventanita
-                String nombre = JOptionPane.showInputDialog(this, "Ingresa tu nombre de tripulante:");
+                // 1. Preguntamos la IP del servidor
+                String ip = pedirTextoEstiloAmongUs("Ingresa la IP del Servidor:");
                 
-                // Verifica que no haya dado a Cancelar y que no haya dejado el nombre vacio
-                if (nombre != null && !nombre.trim().isEmpty()) { 
+                if (ip != null && !ip.trim().isEmpty()) {
+                    // 2. Preguntamos el nombre al usuario
+                    String nombre = pedirTextoEstiloAmongUs("Ingresa tu nombre de tripulante:");
                     
-                    // Crea el cliente de red (el telefono para hablar con el server)
-                    com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente();
-                    
-                    // Esperar un momento para que el cliente se conecte
-                    try { Thread.sleep(500); } catch (InterruptedException ex) {}
-                    
-                    // Abrir lobby y enviar mensaje de conexión
-                    abrirLobby(nombre, false, cliente, "CONECTAR:" + nombre);
+                    if (nombre != null && !nombre.trim().isEmpty()) { 
+                        
+                        // 3. AQUÍ ESTÁ LA MAGIA: Le pasamos la 'ip' al Cliente
+                        com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente(ip);
+                        
+                        try { Thread.sleep(500); } catch (InterruptedException ex) {}
+                        
+                        // Abrimos el lobby
+                        abrirLobby(nombre, false, cliente, "CONECTAR:" + nombre);
+                    }
                 }
             });
         } else if (txt.equals("Local")) {
             // modo local
             b.addActionListener(e -> {
-                String nombre = JOptionPane.showInputDialog(this, "Nombre del Anfitrion:");
+                String nombre = pedirTextoEstiloAmongUs("Nombre del Anfitrion:");
                 if (nombre != null && !nombre.trim().isEmpty()) {
                     
                     // En Local, nosotros somos el servidor.
@@ -357,8 +361,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
                     // Esperamos  a que el servidor arranque bien
                     try { Thread.sleep(1000); } catch (InterruptedException ex) {}
                     
-                    // nos conectamos a nosotros mismos (localhost)
-                    com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente();
+                    // LOCAL: Nos conectamos a nosotros mismos ("localhost")
+                    com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente("localhost");
                     
                     // Esperar conexión
                     try { Thread.sleep(500); } catch (InterruptedException ex) {}
@@ -370,32 +374,23 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         } else if (txt.equals("Unirse a Partida")) {
             // Unirse a partida existente
             b.addActionListener(e -> {
-                // Pedir código de sala
-                String codigo = JOptionPane.showInputDialog(this, "Ingresa el código de la sala:");
+                // CAMBIO IMPORTANTE: Pedir IP en lugar de Código para jugar en LAN real
+                String ip = pedirTextoEstiloAmongUs("Ingresa la IP del Host (ej: 192.168.1.X):");
                 
-                if (codigo != null && !codigo.trim().isEmpty()) {
-                    // Validar formato (6 caracteres alfanuméricos)
-                    codigo = codigo.trim().toUpperCase();
-                    if (!codigo.matches("[A-Z0-9]{6}")) {
-                        JOptionPane.showMessageDialog(this, 
-                            "Código inválido. Debe tener 6 caracteres (letras y números).", 
-                            "Error", 
-                            JOptionPane.ERROR_MESSAGE);
-                        return;
-                    }
+                if (ip != null && !ip.trim().isEmpty()) {
                     
                     // Pedir nombre
-                    String nombre = JOptionPane.showInputDialog(this, "Ingresa tu nombre de tripulante:");
+                    String nombre = pedirTextoEstiloAmongUs("Ingresa tu nombre de tripulante:");
                     
                     if (nombre != null && !nombre.trim().isEmpty()) {
-                        // Conectar al servidor
-                        com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente();
+                        // ONLINE: Conectar a la IP que escribió el usuario
+                        com.amongus.project.red.Cliente cliente = new com.amongus.project.red.Cliente(ip);
                         
                         // Esperar conexión
                         try { Thread.sleep(500); } catch (InterruptedException ex) {}
                         
                         // Abrir lobby y enviar mensaje
-                        abrirLobby(nombre, false, cliente, "CONECTAR:" + nombre + " (Código: " + codigo + ")");
+                        abrirLobby(nombre, false, cliente, "CONECTAR:" + nombre);
                     }
                 }
             });
@@ -405,6 +400,125 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         }
         
         return b; // Retorna el botón creado
+    }
+
+    /**
+     * Muestra un cuadro de diálogo personalizado estilo Among Us para pedir texto.
+     */
+    private String pedirTextoEstiloAmongUs(String mensaje) {
+        final String[] inputUsuario = {null};
+
+        JDialog dialogo = new JDialog(this, "Entrada", true);
+        dialogo.setUndecorated(true); 
+        dialogo.setSize(500, 300);
+        dialogo.setLocationRelativeTo(this);
+
+        // APLICAR FORMA REDONDEADA NATIVA
+        // Esto recorta la ventana del sistema operativo, permitiendo que el panel sea opaco.
+        dialogo.setShape(new java.awt.geom.RoundRectangle2D.Double(0, 0, 500, 300, 40, 40));
+
+        JPanel panel = new JPanel() {
+            private Image imagenVentana;
+            {
+                try {
+                    java.net.URL url = getClass().getClassLoader().getResource("ventanas.jpg");
+                    if (url != null) imagenVentana = ImageIO.read(url);
+                } catch (Exception e) {}
+            }
+
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // Como la ventana ya tiene la forma recortada por setShape,
+                // aquí solo pintamos el contenido normal.
+                
+                // 1. Imagen de fondo
+                if (imagenVentana != null) {
+                    g2.drawImage(imagenVentana, 0, 0, getWidth(), getHeight(), this);
+                } else {
+                    g2.setColor(new Color(20, 25, 30));
+                    g2.fillRect(0, 0, getWidth(), getHeight());
+                }
+
+                // 2. Velo oscuro
+                g2.setColor(new Color(0, 0, 0, 150));
+                g2.fillRect(0, 0, getWidth(), getHeight());
+
+                // 3. Borde blanco (ajustado para que no se corte por el setShape)
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(6));
+                g2.drawRoundRect(3, 3, getWidth() - 6, getHeight() - 6, 40, 40);
+                
+                g2.dispose();
+            }
+        };
+        
+        // ELIMINAR TRANSPARENCIA SIMULADA: Ahora el panel es una pieza sólida.
+        panel.setOpaque(true); 
+        panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+        panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
+
+        // Etiqueta del Mensaje
+        JLabel label = new JLabel("<html><center>" + mensaje + "</center></html>", SwingConstants.CENTER);
+        label.setFont(cargarFuente(24f)); // Fuente del juego
+        label.setForeground(Color.WHITE);
+        label.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        // Campo de Texto
+        JTextField campoTexto = new JTextField();
+        campoTexto.setFont(new Font("Arial", Font.BOLD, 20)); // Arial para que sea legible al escribir
+        campoTexto.setForeground(Color.WHITE);
+        campoTexto.setBackground(new Color(10, 10, 10));
+        campoTexto.setCaretColor(Color.WHITE);
+        campoTexto.setHorizontalAlignment(JTextField.CENTER);
+        campoTexto.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(Color.GRAY, 2),
+                BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        ));
+        campoTexto.setMaximumSize(new Dimension(400, 50));
+        
+        // Botones
+        JPanel panelBotones = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 0));
+        panelBotones.setOpaque(false);
+
+        // Reutilizamos el estilo de boton pero quitamos sus listeners por defecto
+        JButton btnAceptar = crearBotonEstiloAmongUs("Aceptar");
+        for(java.awt.event.ActionListener al : btnAceptar.getActionListeners()) btnAceptar.removeActionListener(al);
+        btnAceptar.setPreferredSize(new Dimension(150, 50));
+        
+        JButton btnCancelar = crearBotonEstiloAmongUs("Cancelar");
+        for(java.awt.event.ActionListener al : btnCancelar.getActionListeners()) btnCancelar.removeActionListener(al);
+        btnCancelar.setPreferredSize(new Dimension(150, 50));
+
+        // Lógica de botones
+        btnAceptar.addActionListener(e -> {
+            inputUsuario[0] = campoTexto.getText();
+            dialogo.dispose();
+        });
+
+        btnCancelar.addActionListener(e -> {
+            inputUsuario[0] = null;
+            dialogo.dispose();
+        });
+        
+        // Enter en el campo de texto = Aceptar
+        campoTexto.addActionListener(e -> btnAceptar.doClick());
+
+        // Armar todo
+        panel.add(label);
+        panel.add(Box.createVerticalStrut(30));
+        panel.add(campoTexto);
+        panel.add(Box.createVerticalStrut(30));
+        panelBotones.add(btnAceptar);
+        panelBotones.add(btnCancelar);
+        panel.add(panelBotones);
+
+        dialogo.add(panel);
+        dialogo.setVisible(true); // Se detiene aquí hasta que se cierre
+
+        return inputUsuario[0];
     }
 
     private void abrirLobby(String nombre, boolean esHost, Cliente cliente, String mensajeInicial) {

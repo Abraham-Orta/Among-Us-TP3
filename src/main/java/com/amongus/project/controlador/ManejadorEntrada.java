@@ -2,102 +2,135 @@ package com.amongus.project.controlador;
 
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import com.amongus.project.modelo.EstadoJuego;
-import com.amongus.project.red.Cliente;
 
+/**
+ * ManejadorEntrada
+ * ================
+ * Escucha teclado y ratón de UNA ventana específica.
+ *
+ * IMPORTANTE: Todos los campos son de INSTANCIA (no static).
+ * Cada PanelJuego crea su propio ManejadorEntrada, por lo que
+ * múltiples ventanas abiertas simultáneamente (PruebaDirecta) no
+ * se interfieren entre sí — cada una maneja su propio teclado.
+ */
 public class ManejadorEntrada extends KeyAdapter {
 
-    private Cliente cliente;
+    // --- MOVIMIENTO ---
+    public boolean arriba    = false;
+    public boolean abajo     = false;
+    public boolean izquierda = false;
+    public boolean derecha   = false;
 
-    // Estado de las teclas (leído por Jugador.actualizar() cada frame)
-    public boolean arriba      = false;
-    public boolean abajo       = false;
-    public boolean izquierda   = false;
-    public boolean derecha     = false;
-    public boolean accionMatar    = false;
-    public boolean accionVentilar = false;
+    // --- ACCIONES ---
+    public boolean accionMatar    = false; // Q → Paralizar
+    public boolean accionVentilar = false; // E → Alcantarilla
+    public boolean accionReportar = false; // R → Reportar cadáver
+    public boolean accionSabotaje = false; // H → Sabotaje de luces
 
-    public ManejadorEntrada(Cliente cliente) {
-        this.cliente = cliente;
+    // --- MODO DESARROLLADOR ---
+    public boolean modoDesarrollador = false; // F3 → ver hitboxes
+
+    // --- RATÓN ---
+    public int     mouseX         = 0;
+    public int     mouseY         = 0;
+    public boolean clickIzquierdo = false;
+
+    // --- ESTADO DE JUEGO (instancia por cliente) ---
+    private EstadoJuego estadoJuego;
+
+    public ManejadorEntrada(EstadoJuego estadoJuego) {
+        this.estadoJuego = estadoJuego;
     }
 
+    /**
+     * MouseHandler — clase interna para eventos del ratón.
+     * También usa campos de instancia pasados por referencia al ManejadorEntrada padre.
+     */
+    public class MouseHandler extends MouseAdapter {
+
+        @Override
+        public void mousePressed(MouseEvent e) {
+            if (e.getButton() == MouseEvent.BUTTON1) {
+                clickIzquierdo = true;
+                mouseX = e.getX();
+                mouseY = e.getY();
+            }
+        }
+
+        @Override
+        public void mouseReleased(MouseEvent e) {
+            if (e.getButton() == MouseEvent.BUTTON1) {
+                clickIzquierdo = false;
+            }
+        }
+
+        @Override
+        public void mouseMoved(MouseEvent e) {
+            mouseX = e.getX();
+            mouseY = e.getY();
+        }
+
+        @Override
+        public void mouseDragged(MouseEvent e) {
+            mouseX = e.getX();
+            mouseY = e.getY();
+        }
+    }
+
+    // ---------------------------------------------------------------
+    //  TECLADO — PRESIONAR
+    // ---------------------------------------------------------------
     @Override
     public void keyPressed(KeyEvent e) {
-        int codigo = e.getKeyCode();
+        int c = e.getKeyCode();
 
-        switch (codigo) {
-            case KeyEvent.VK_W:
-            case KeyEvent.VK_UP:
-                if (!arriba) { // Evitar spam de mensajes por key-repeat del SO
-                    arriba = true;
-                    if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:PRESS:UP");
-                }
-                break;
-            case KeyEvent.VK_S:
-            case KeyEvent.VK_DOWN:
-                if (!abajo) {
-                    abajo = true;
-                    if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:PRESS:DOWN");
-                }
-                break;
-            case KeyEvent.VK_A:
-            case KeyEvent.VK_LEFT:
-                if (!izquierda) {
-                    izquierda = true;
-                    if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:PRESS:LEFT");
-                }
-                break;
-            case KeyEvent.VK_D:
-            case KeyEvent.VK_RIGHT:
-                if (!derecha) {
-                    derecha = true;
-                    if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:PRESS:RIGHT");
-                }
-                break;
-            case KeyEvent.VK_E:
-                accionMatar = true;
-                if (cliente != null) cliente.enviarMensaje("ACCION:PRESS:KILL");
-                break;
-            case KeyEvent.VK_F:
-                accionVentilar = true;
-                if (cliente != null) cliente.enviarMensaje("ACCION:PRESS:VENT");
-                break;
+        // Movimiento
+        if (c == KeyEvent.VK_W || c == KeyEvent.VK_UP)    arriba    = true;
+        if (c == KeyEvent.VK_S || c == KeyEvent.VK_DOWN)  abajo     = true;
+        if (c == KeyEvent.VK_A || c == KeyEvent.VK_LEFT)  izquierda = true;
+        if (c == KeyEvent.VK_D || c == KeyEvent.VK_RIGHT) derecha   = true;
+
+        // Acciones
+        if (c == KeyEvent.VK_Q) accionMatar    = true;
+        if (c == KeyEvent.VK_E) accionVentilar = true;
+        if (c == KeyEvent.VK_R) accionReportar = true;
+        if (c == KeyEvent.VK_H) accionSabotaje = true;
+
+        // Depuración: forzar fases (útil en PruebaDirecta)
+        if (c == KeyEvent.VK_V) {
+            estadoJuego.setFaseActual(EstadoJuego.Fase.VOTACION);
+            if (estadoJuego.getJugadorLocal() != null)
+                estadoJuego.getJugadorLocal().resetVoto();
+        }
+        if (c == KeyEvent.VK_J) {
+            estadoJuego.setFaseActual(EstadoJuego.Fase.JUGANDO);
+        }
+
+        // Toggle hitboxes
+        if (c == KeyEvent.VK_F3) {
+            modoDesarrollador = !modoDesarrollador;
+            System.out.println("Modo desarrollador: " + (modoDesarrollador ? "ACTIVADO" : "DESACTIVADO"));
         }
     }
 
+    // ---------------------------------------------------------------
+    //  TECLADO — SOLTAR
+    // ---------------------------------------------------------------
     @Override
     public void keyReleased(KeyEvent e) {
-        int codigo = e.getKeyCode();
+        int c = e.getKeyCode();
 
-        switch (codigo) {
-            case KeyEvent.VK_W:
-            case KeyEvent.VK_UP:
-                arriba = false;
-                if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:RELEASE:UP");
-                break;
-            case KeyEvent.VK_S:
-            case KeyEvent.VK_DOWN:
-                abajo = false;
-                if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:RELEASE:DOWN");
-                break;
-            case KeyEvent.VK_A:
-            case KeyEvent.VK_LEFT:
-                izquierda = false;
-                if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:RELEASE:LEFT");
-                break;
-            case KeyEvent.VK_D:
-            case KeyEvent.VK_RIGHT:
-                derecha = false;
-                if (cliente != null) cliente.enviarMensaje("MOVIMIENTO:RELEASE:RIGHT");
-                break;
-            case KeyEvent.VK_E:
-                accionMatar = false;
-                if (cliente != null) cliente.enviarMensaje("ACCION:RELEASE:KILL");
-                break;
-            case KeyEvent.VK_F:
-                accionVentilar = false;
-                if (cliente != null) cliente.enviarMensaje("ACCION:RELEASE:VENT");
-                break;
-        }
+        if (c == KeyEvent.VK_W || c == KeyEvent.VK_UP)    arriba    = false;
+        if (c == KeyEvent.VK_S || c == KeyEvent.VK_DOWN)  abajo     = false;
+        if (c == KeyEvent.VK_A || c == KeyEvent.VK_LEFT)  izquierda = false;
+        if (c == KeyEvent.VK_D || c == KeyEvent.VK_RIGHT) derecha   = false;
+
+        if (c == KeyEvent.VK_Q) accionMatar    = false;
+        if (c == KeyEvent.VK_E) accionVentilar = false;
+        if (c == KeyEvent.VK_R) accionReportar = false;
+        if (c == KeyEvent.VK_H) accionSabotaje = false;
     }
 }

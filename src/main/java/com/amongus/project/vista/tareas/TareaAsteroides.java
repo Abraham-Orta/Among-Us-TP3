@@ -26,6 +26,10 @@ public class TareaAsteroides extends JPanel implements MouseListener, MouseMotio
     private Timer timerJuego;
     private Point mousePos = new Point(0, 0);
     private boolean completada = false;
+    
+    public boolean isCompletada() {
+        return completada;
+    }
     private Random random = new Random();
 
     public TareaAsteroides() {

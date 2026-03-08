@@ -9,6 +9,9 @@ public class Personaje {
     // Dirección: -1 izquierda, 1 derecha, 0 quieto
     protected int direccion = 1; // Default derecha
 
+    // Referencia al estado de juego de ESTE cliente (la asigna Jugador)
+    protected EstadoJuego estadoJuego;
+
     public Personaje(int x, int y, int velocidad) {
         this.x = x;
         this.y = y;
@@ -31,7 +34,7 @@ public class Personaje {
         int nuevoY = this.y + vy;
         
         // Validar colisión con Mapa si existe
-        Mapa mapa = EstadoJuego.getInstancia().getMapa();
+        Mapa mapa = (estadoJuego != null) ? estadoJuego.getMapa() : null;
         
         if (mapa != null) {
             // --- LIMITES DEL MAPA ---
