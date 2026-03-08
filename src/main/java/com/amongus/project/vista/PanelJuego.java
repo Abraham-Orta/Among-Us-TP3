@@ -148,10 +148,11 @@ public class PanelJuego extends JPanel {
 
         Paint original = g2d.getPaint();
         g2d.setPaint(gradCache);
-        // Pintar solo el viewport visible, no el mapa completo
-        int camX = Math.max(0, (int)(cx - getWidth() / 2));
-        int camY = Math.max(0, (int)(cy - getHeight() / 2));
-        g2d.fillRect(camX, camY, getWidth(), getHeight());
+        // Pintar un área lo suficientemente grande para cubrir la ventana
+        // sin importar si el jugador está en el borde del mapa
+        int rectX = (int)(cx - getWidth());
+        int rectY = (int)(cy - getHeight());
+        g2d.fillRect(rectX, rectY, getWidth() * 2, getHeight() * 2);
         g2d.setPaint(original);
     }
 
