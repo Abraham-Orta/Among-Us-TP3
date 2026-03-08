@@ -168,6 +168,6 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     }
 
     private void renderizar() {
-        if (panelJuego != null) panelJuego.repaint();
+        if (panelJuego != null) SwingUtilities.invokeLater(panelJuego::repaint);
     }
 }

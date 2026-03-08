@@ -114,6 +114,10 @@ public class PanelJuego extends JPanel {
         }
     }
 
+    // Caché para la niebla de guerra — evita recrear el gradiente 60 veces/segundo
+    private RadialGradientPaint gradCache;
+    private float gradCacheX, gradCacheY, gradCacheRadio;
+
     private void dibujarCampoVisual(Graphics2D g2d, Jugador local, int anchoMapa, int altoMapa) {
         float radio;
         if (local.isImpostor()) {
@@ -126,19 +130,28 @@ public class PanelJuego extends JPanel {
         float cx = local.getX() + 15;
         float cy = local.getY() + 20;
 
-        RadialGradientPaint grad = new RadialGradientPaint(
-            new Point2D.Float(cx, cy), radio,
-            new float[]{0.0f, 0.7f, 1.0f},
-            new Color[]{
-                new Color(0, 0, 0,   0),
-                new Color(0, 0, 0, 120),
-                new Color(0, 0, 0, 255)
-            }
-        );
+        // Solo recrear el gradiente si cambió la posición o el radio
+        if (gradCache == null || cx != gradCacheX || cy != gradCacheY || radio != gradCacheRadio) {
+            gradCache = new RadialGradientPaint(
+                new Point2D.Float(cx, cy), radio,
+                new float[]{0.0f, 0.7f, 1.0f},
+                new Color[]{
+                    new Color(0, 0, 0,   0),
+                    new Color(0, 0, 0, 120),
+                    new Color(0, 0, 0, 255)
+                }
+            );
+            gradCacheX = cx;
+            gradCacheY = cy;
+            gradCacheRadio = radio;
+        }
 
         Paint original = g2d.getPaint();
-        g2d.setPaint(grad);
-        g2d.fillRect(0, 0, anchoMapa, altoMapa);
+        g2d.setPaint(gradCache);
+        // Pintar solo el viewport visible, no el mapa completo
+        int camX = Math.max(0, (int)(cx - getWidth() / 2));
+        int camY = Math.max(0, (int)(cy - getHeight() / 2));
+        g2d.fillRect(camX, camY, getWidth(), getHeight());
         g2d.setPaint(original);
     }
 

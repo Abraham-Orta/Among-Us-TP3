@@ -15,6 +15,9 @@ import com.amongus.project.red.Cliente;
 
 public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
 
+    // Caché estático: la fuente se carga del disco UNA sola vez
+    private static Font fuenteBase;
+
     private String nombreJugador;
     private boolean esHost;
     private Cliente cliente;
@@ -29,6 +32,9 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
 
     // Cada cliente tiene su propio EstadoJuego — NO compartido entre ventanas
     private EstadoJuego estadoJuego;
+
+    // Caché del icono de jugador — se carga una sola vez
+    private ImageIcon iconoJugadorCache;
 
     public PantallaLobby(String nombreJugador, boolean esHost, Cliente cliente) {
         this.nombreJugador       = nombreJugador;
@@ -187,30 +193,32 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private void actualizarListaJugadores() {
         panelJugadores.removeAll();
 
-        ImageIcon iconoJugador = null;
-        try {
-            String[] posiblesNombres = {"Imagen_Espera.png", "Imagen_Espera.jpg", "icono_jugador.png"};
-            Image img = null;
-            for (String n : posiblesNombres) {
-                java.net.URL u = getClass().getClassLoader().getResource(n);
-                if (u != null) { img = ImageIO.read(u); break; }
-                String[] rutas = {"src/main/resources/" + n, "resources/" + n, n};
-                for (String r : rutas) {
-                    File f = new File(r);
-                    if (f.exists()) { img = ImageIO.read(f); break; }
+        // Cargar icono solo la primera vez
+        if (iconoJugadorCache == null) {
+            try {
+                String[] posiblesNombres = {"Imagen_Espera.png", "Imagen_Espera.jpg", "icono_jugador.png"};
+                Image img = null;
+                for (String n : posiblesNombres) {
+                    java.net.URL u = getClass().getClassLoader().getResource(n);
+                    if (u != null) { img = ImageIO.read(u); break; }
+                    String[] rutas = {"src/main/resources/" + n, "resources/" + n, n};
+                    for (String r : rutas) {
+                        File f = new File(r);
+                        if (f.exists()) { img = ImageIO.read(f); break; }
+                    }
+                    if (img != null) break;
                 }
-                if (img != null) break;
+                if (img != null) iconoJugadorCache = new ImageIcon(img.getScaledInstance(48, 32, Image.SCALE_SMOOTH));
+            } catch (Exception e) {
+                System.err.println("No se pudo cargar el icono del jugador: " + e.getMessage());
             }
-            if (img != null) iconoJugador = new ImageIcon(img.getScaledInstance(48, 32, Image.SCALE_SMOOTH));
-        } catch (Exception e) {
-            System.err.println("No se pudo cargar el icono del jugador: " + e.getMessage());
         }
 
         for (String jugador : jugadoresConectados) {
             JLabel lbl = new JLabel();
             String nombre = jugador.trim();
-            if (iconoJugador != null) {
-                lbl.setIcon(iconoJugador);
+            if (iconoJugadorCache != null) {
+                lbl.setIcon(iconoJugadorCache);
                 lbl.setText(nombre);
                 lbl.setIconTextGap(15);
             } else {
@@ -416,21 +424,26 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     }
 
     private Font cargarFuente(float tamano) {
-        try {
-            String ruta = "in_your_face_joffrey/InYourFaceJoffrey.ttf";
-            InputStream is = getClass().getClassLoader().getResourceAsStream(ruta);
-            if (is == null) {
-                String[] rutas = {"src/main/resources/" + ruta, "resources/" + ruta};
-                for (String r : rutas) {
-                    File f = new File(r);
-                    if (f.exists()) return Font.createFont(Font.TRUETYPE_FONT, f).deriveFont(tamano);
+        // Cachear la fuente base para no releer del disco en cada llamada
+        if (fuenteBase == null) {
+            try {
+                String ruta = "in_your_face_joffrey/InYourFaceJoffrey.ttf";
+                InputStream is = getClass().getClassLoader().getResourceAsStream(ruta);
+                if (is == null) {
+                    String[] rutas = {"src/main/resources/" + ruta, "resources/" + ruta};
+                    for (String r : rutas) {
+                        File f = new File(r);
+                        if (f.exists()) { fuenteBase = Font.createFont(Font.TRUETYPE_FONT, f); break; }
+                    }
+                } else {
+                    fuenteBase = Font.createFont(Font.TRUETYPE_FONT, is);
                 }
-                return new Font("Arial", Font.BOLD, (int) tamano);
+            } catch (Exception e) {
+                // fallback silencioso
             }
-            return Font.createFont(Font.TRUETYPE_FONT, is).deriveFont(tamano);
-        } catch (Exception e) {
-            return new Font("Arial", Font.BOLD, (int) tamano);
+            if (fuenteBase == null) fuenteBase = new Font("Arial", Font.BOLD, 12);
         }
+        return fuenteBase.deriveFont(tamano);
     }
 
     private JButton crearBotonEstiloAmongUs(String txt) {

@@ -208,12 +208,20 @@ public class Jugador extends Personaje {
     //  RED
     // ==========================================
 
+    // Throttling: enviar posición máximo cada 100ms para no inundar la red
+    private static final long INTERVALO_ENVIO_NS = 100_000_000L; // 100ms
+    private long ultimoEnvioNano = 0;
+
     private void enviarPosicionSiCambio() {
         if (this.x != ultimoXEnviado || this.y != ultimoYEnviado) {
-            if (clienteRed != null)
-                clienteRed.enviarMensaje("MOVER:" + nombre + "," + this.x + "," + this.y);
-            ultimoXEnviado = this.x;
-            ultimoYEnviado = this.y;
+            long ahora = System.nanoTime();
+            if (ahora - ultimoEnvioNano >= INTERVALO_ENVIO_NS) {
+                if (clienteRed != null)
+                    clienteRed.enviarMensaje("MOVER:" + nombre + "," + this.x + "," + this.y);
+                ultimoXEnviado = this.x;
+                ultimoYEnviado = this.y;
+                ultimoEnvioNano = ahora;
+            }
         }
     }
 

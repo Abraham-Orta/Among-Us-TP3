@@ -7,7 +7,9 @@ import java.awt.Rectangle;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 
 
@@ -19,6 +21,9 @@ import javax.imageio.ImageIO;
  * Maneja el fondo, los obstáculos de colisión y las vías de acceso rápido (alcantarillas).
  */
 public class Mapa {
+
+    // Caché estático: la imagen se carga del disco UNA sola vez y se reutiliza
+    private static final Map<String, Image> cacheImagenes = new HashMap<>();
 
     private int ancho, alto;
     private List<Rectangle> obstaculos;
@@ -39,6 +44,12 @@ public class Mapa {
     }
 
     private void cargarImagenFondo(String nombreArchivoFondo) {
+        // Verificar caché primero
+        if (cacheImagenes.containsKey(nombreArchivoFondo)) {
+            imagenFondo = cacheImagenes.get(nombreArchivoFondo);
+            return;
+        }
+
         try {
             File f = new File("mapa/" + nombreArchivoFondo);
             if (f.exists()) {
@@ -50,6 +61,10 @@ public class Mapa {
                 } else {
                     System.err.println("No se encontró el archivo del mapa: " + nombreArchivoFondo);
                 }
+            }
+            // Guardar en caché para reutilización
+            if (imagenFondo != null) {
+                cacheImagenes.put(nombreArchivoFondo, imagenFondo);
             }
         } catch (IOException e) {
             System.err.println("Error al cargar la imagen del mapa: " + e.getMessage());
