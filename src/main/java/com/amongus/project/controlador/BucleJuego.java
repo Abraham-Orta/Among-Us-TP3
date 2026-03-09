@@ -50,31 +50,25 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 int nx = Integer.parseInt(p[1]);
                 int ny = Integer.parseInt(p[2]);
                 for (Jugador j : estado.getJugadores()) {
-                    if (j.getNombre().equals(nombre)) { j.setX(nx); j.setY(ny); break; }
+                    if (j.getNombre().equals(nombre)) { j.recibirPosicionRed(nx, ny); break; }
                 }
             } catch (Exception e) {
                 System.err.println("Error procesando MOVER: " + mensaje);
             }
         } else if (mensaje.startsWith("MATAR:")) {
-            String victima = mensaje.substring(6);
-            for (Jugador j : estado.getJugadores()) {
-                if (j.getNombre().equals(victima)) { j.setVivo(false); break; }
+            try {
+                String[] p = mensaje.substring(6).split(",");
+                String atacante = p[0];
+                String victima = p[1];
+                for (Jugador j : estado.getJugadores()) {
+                    if (j.getNombre().equals(victima)) { j.setVivo(false); }
+                    if (j.getNombre().equals(atacante)) { j.iniciarAnimacionAtaque(); }
+                }
+            } catch (Exception e) {
+                System.err.println("Error procesando MATAR: " + mensaje);
             }
         } else if (mensaje.startsWith("ANIMACION_MATAR:")) {
-            String[] partes = mensaje.substring(16).split(",");
-            if (partes.length >= 2) {
-                String impostorNombre = partes[0];
-                String victimaNombre = partes[1];
-                Jugador impostor = null;
-                Jugador victima = null;
-                for (Jugador j : estado.getJugadores()) {
-                    if (j.getNombre().equals(impostorNombre)) impostor = j;
-                    if (j.getNombre().equals(victimaNombre)) victima = j;
-                }
-                if (impostor != null && victima != null) {
-                    impostor.iniciarAnimacionAsesinato(victima.getX(), victima.getY());
-                }
-            }
+            // Ya no se usa, la animación se procesa con MATAR
         } else if (mensaje.startsWith("REPORTAR:")) {
             estado.setFaseActual(EstadoJuego.Fase.VOTACION);
             if (panelJuego.getPantallaVotacion() != null)
@@ -134,10 +128,16 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
 
         } else if (fase == EstadoJuego.Fase.JUGANDO) {
 
+            // Actualizar físicas y teclado del jugador local
             Jugador jugadorLocal = estado.getJugadorLocal();
             if (jugadorLocal != null) {
                 // ← Pasamos el ManejadorEntrada de ESTA ventana, no uno estático
                 jugadorLocal.actualizar(panelJuego.getManejadorEntrada());
+            }
+
+            // Actualizar interpolación visual de TODOS los jugadores (para evitar lag visual en red)
+            for (Jugador j : estado.getJugadores()) {
+                j.actualizarInterpolacion();
             }
 
             // Solo verificar victoria localmente si NO hay red.

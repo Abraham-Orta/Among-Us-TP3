@@ -34,18 +34,16 @@ public class Jugador extends Personaje {
     private boolean votoSkip    = false;
     private Jugador votoJugador = null;
 
+    // Animaciones
+    private long tiempoInicioAsesinato = 0;
+    private long tiempoInicioMuerte = 0;
+    private boolean atacando = false;
+
     // Cooldowns (en frames a 60 FPS)
     private int cooldownAsesinato   = 0;
     private int cooldownVentilacion = 0;
     private int cooldownReporte     = 0;
     private int cooldownSabotaje    = 0;
-
-    // Animación de Asesinato
-    private boolean animandoAsesinato = false;
-    private int frameAsesinato = 0;
-    private int xVictima = -1;
-    private int yVictima = -1;
-    private String nombreVictimaMatar = null;
 
     public Jugador(String nombre, int x, int y, Color color, boolean impostor) {
         super(x, y, 4);
@@ -109,22 +107,6 @@ public class Jugador extends Personaje {
         if (cooldownReporte     > 0) cooldownReporte--;
         if (cooldownSabotaje    > 0) cooldownSabotaje--;
 
-        // Procesar animación de asesinato (si la hay)
-        if (animandoAsesinato) {
-            frameAsesinato++;
-            int MAX_FRAMES_ANIM = 30; // 0.5 segundos a 60 FPS
-            if (frameAsesinato >= MAX_FRAMES_ANIM) {
-                animandoAsesinato = false;
-                // Si este cliente es el asesisno real (quien apretó la tecla),
-                // aquí consolida el la muerte enviando el paquete real de la víctima
-                if (nombreVictimaMatar != null && clienteRed != null) {
-                    clienteRed.enviarMensaje("MATAR:" + nombreVictimaMatar);
-                    nombreVictimaMatar = null;
-                }
-            }
-            return; // Mientras animamos, no mover ni realizar acciones
-        }
-
         // Jugador inhabilitado: no hace nada
         if (!vivo) return;
 
@@ -181,25 +163,15 @@ public class Jugador extends Personaje {
                 int dx = this.x - victima.getX();
                 int dy = this.y - victima.getY();
                 if (Math.sqrt(dx * dx + dy * dy) <= 50) {
+                    victima.setVivo(false);
+                    this.iniciarAnimacionAtaque();
+                    System.out.println(nombre + " paralizó a " + victima.getNombre());
                     cooldownAsesinato = 600;
-                    this.nombreVictimaMatar = victima.getNombre();
-                    if (clienteRed != null) {
-                        clienteRed.enviarMensaje("ANIMACION_MATAR:" + victima.getNombre());
-                    } else {
-                        // Modo offline (Prueba directa sin red)
-                        iniciarAnimacionAsesinato(victima.getX(), victima.getY());
-                    }
+                    if (clienteRed != null) clienteRed.enviarMensaje("MATAR:" + nombre + "," + victima.getNombre());
                     break;
                 }
             }
         }
-    }
-
-    public void iniciarAnimacionAsesinato(int xObj, int yObj) {
-        this.animandoAsesinato = true;
-        this.frameAsesinato = 0;
-        this.xVictima = xObj;
-        this.yVictima = yObj;
     }
 
     private void intentarUsarAlcantarilla() {
@@ -242,8 +214,9 @@ public class Jugador extends Personaje {
     //  RED
     // ==========================================
 
-    // Throttling: enviar posición máximo cada 100ms para no inundar la red
-    private static final long INTERVALO_ENVIO_NS = 100_000_000L; // 100ms
+    // Throttling: enviar posición máximo cada 33ms (~30 FPS).
+    // Esto balancea una red ligera (para no sobrecargar el servidor) con un movimiento fluido.
+    private static final long INTERVALO_ENVIO_NS = 33_333_333L; // 33ms
     private long ultimoEnvioNano = 0;
 
     private void enviarPosicionSiCambio() {
@@ -267,10 +240,27 @@ public class Jugador extends Personaje {
     public String  getNombre()           { return nombre; }
     public boolean isImpostor()          { return impostor; }
     public boolean isVivo()              { return vivo; }
-    public void    setVivo(boolean vivo) { this.vivo = vivo; }
     
-    public boolean isAnimandoAsesinato() { return animandoAsesinato; }
-    public int     getFrameAsesinato()   { return frameAsesinato; }
-    public int     getXVictima()         { return xVictima; }
-    public int     getYVictima()         { return yVictima; }
+    public void setVivo(boolean vivo) { 
+        if (this.vivo && !vivo) {
+            this.tiempoInicioMuerte = System.currentTimeMillis();
+        }
+        this.vivo = vivo; 
+    }
+
+    public long getTiempoInicioMuerte() { return tiempoInicioMuerte; }
+
+    public void iniciarAnimacionAtaque() {
+        this.atacando = true;
+        this.tiempoInicioAsesinato = System.currentTimeMillis();
+    }
+
+    public boolean isAtacando() {
+        if (atacando && System.currentTimeMillis() - tiempoInicioAsesinato > 2880) { // 48 frames a ~60ms c/u
+            atacando = false;
+        }
+        return atacando;
+    }
+
+    public long getTiempoInicioAsesinato() { return tiempoInicioAsesinato; }
 }
