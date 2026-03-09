@@ -167,7 +167,7 @@ public class Jugador extends Personaje {
                     this.iniciarAnimacionAtaque();
                     System.out.println(nombre + " paralizó a " + victima.getNombre());
                     cooldownAsesinato = 600;
-                    if (clienteRed != null) clienteRed.enviarMensaje("MATAR:" + victima.getNombre());
+                    if (clienteRed != null) clienteRed.enviarMensaje("MATAR:" + nombre + "," + victima.getNombre());
                     break;
                 }
             }
