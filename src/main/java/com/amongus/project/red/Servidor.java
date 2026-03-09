@@ -17,6 +17,7 @@ public class Servidor {
     private static final int MIN_JUGADORES = 3;
 
     public static CopyOnWriteArrayList<AtencionJugador> listaJugadores = new CopyOnWriteArrayList<>();
+    public static boolean partidaIniciada = false;
 
     public static void main(String[] args) {
         System.out.println("Iniciando el servidor de Among Us...");
@@ -83,7 +84,9 @@ public class Servidor {
         // Marcar rol en cada AtencionJugador
         for (int i = 0; i < listaJugadores.size(); i++) {
             listaJugadores.get(i).esImpostor = (i == impostor1 || i == impostor2);
+            listaJugadores.get(i).estaVivo = true;
         }
+        partidaIniciada = true;
 
         // Susurrar el rol individualmente → nadie sabe el rol de los demás
         for (AtencionJugador j : listaJugadores) {
@@ -95,10 +98,31 @@ public class Servidor {
     }
 
     public static void finalizarPartida(String equipoGanador) {
+        partidaIniciada = false;
         System.out.println("La partida terminó. Ganaron: " + equipoGanador);
         enviarATodos("FIN:" + equipoGanador);
         GestorDatos.guardarPartida(equipoGanador, listaJugadores.size());
         System.out.println("Datos guardados en el XML.");
+    }
+
+    public static void verificarVictoria() {
+        if (!partidaIniciada) return;
+
+        int impostoresVivos = 0;
+        int tripulantesVivos = 0;
+
+        for (AtencionJugador j : listaJugadores) {
+            if (j.estaVivo) {
+                if (j.esImpostor) impostoresVivos++;
+                else tripulantesVivos++;
+            }
+        }
+
+        if (impostoresVivos >= tripulantesVivos && tripulantesVivos > 0) {
+            finalizarPartida("Impostores");
+        } else if (impostoresVivos == 0 && tripulantesVivos > 0) {
+            finalizarPartida("Tripulantes");
+        }
     }
 
     public static void enviarListaJugadores() {

@@ -24,6 +24,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     public boolean moviendoAbajo = false;
     public boolean moviendoIzquierda = false;
     public boolean moviendoDerecha = false;
+    public boolean estaVivo = true;
 
     // Constructor: Se ejecuta cuando creamos el objeto con "new"
     public AtencionJugador(Socket socket) { // Recibimos el socket desde el Servidor
@@ -106,7 +107,15 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                 }
                 // Si alguien es asesinado, informamos a todos
                 else if (lineaRecibida.startsWith("MATAR:")) {
+                    String victima = lineaRecibida.substring(6);
+                    for (AtencionJugador j : Servidor.listaJugadores) {
+                        if (j.getNombreJugador() != null && j.getNombreJugador().equals(victima)) {
+                            j.estaVivo = false;
+                            break;
+                        }
+                    }
                     Servidor.enviarATodos(lineaRecibida);
+                    Servidor.verificarVictoria();
                 }
                 // Si alguien reporta un cuerpo, avisamos a todos para abrir la votación
                 else if (lineaRecibida.equals("REPORTAR:")) {
@@ -161,6 +170,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
             
             // Enviar lista actualizada
             Servidor.enviarListaJugadores();
+            Servidor.verificarVictoria();
             
             try { // Intentamos cerrar el socket bien
                 socketJugador.close(); // Cerramos conexion
