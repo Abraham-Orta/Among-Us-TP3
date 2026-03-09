@@ -28,6 +28,13 @@ public class PantallaFinJuego extends JDialog {
         boolean ganaronImpostores = mensajeGanador.toLowerCase().contains("impostor");
         Color colorTema = ganaronImpostores ? Color.RED : new Color(0, 150, 255);
 
+        // reproducir sonido de victoria correspondiente
+        if (ganaronImpostores) {
+            ReproductorMusica.reproducirEfecto("victoria_impostor.wav");
+        } else {
+            ReproductorMusica.reproducirEfecto("victoria_tripulantes.wav");
+        }
+
         // Panel Principal con gráficos personalizados
         JPanel panelPrincipal = new JPanel(new GridBagLayout()) {
             private Image imagenVentana;
@@ -109,7 +116,8 @@ public class PantallaFinJuego extends JDialog {
         botonAceptar.setFocusPainted(false);
         botonAceptar.setCursor(new Cursor(Cursor.HAND_CURSOR));
         
-        botonAceptar.addActionListener(evento -> dispose());
+        // acción para cerrar el juego por completo al pulsar salir
+        botonAceptar.addActionListener(evento -> System.exit(0));
         panelPrincipal.add(botonAceptar, gbc);
 
         add(panelPrincipal);

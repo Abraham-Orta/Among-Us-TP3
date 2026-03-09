@@ -13,6 +13,9 @@ import java.awt.image.BufferedImage;
 import java.util.HashMap;
 import java.util.Map;
 import javax.imageio.ImageIO;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.net.URL;
 import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
@@ -38,6 +41,9 @@ public class PanelJuego extends JPanel {
     // Instancia propia de EstadoJuego — NO compartida entre ventanas
     private EstadoJuego estadoJuego;
 
+    // Rectángulos para los botones del HUD
+    private Rectangle rectKill, rectReport, rectVent, rectSabotage;
+
     // ==============================================================
     // SISTEMA DE PALETTE SWAPPING Y ANIMACIÓN (LOS 5 PASOS)
     // ==============================================================
@@ -55,7 +61,7 @@ public class PanelJuego extends JPanel {
      * @param colorPrimario El color del jugador
      * @param claveCache Un nombre único para guardar en caché, ej: "idle"
      */
-    private BufferedImage obtenerSpriteColoreado(String rutaMolde, Color colorPrimario, String claveCache) {
+    public static BufferedImage obtenerSpriteColoreado(String rutaMolde, Color colorPrimario, String claveCache) {
         // Generamos un ID único combinando la acción y el código numérico del color
         String idUnico = claveCache + "_" + colorPrimario.getRGB();
 
@@ -68,7 +74,7 @@ public class PanelJuego extends JPanel {
         BufferedImage molde = cacheMoldes.get(rutaMolde);
         if (molde == null) {
             try {
-                URL url = getClass().getClassLoader().getResource(rutaMolde);
+                URL url = PanelJuego.class.getClassLoader().getResource(rutaMolde);
                 if (url != null) {
                     molde = ImageIO.read(url);
                     cacheMoldes.put(rutaMolde, molde);
@@ -134,15 +140,15 @@ public class PanelJuego extends JPanel {
     }
 
     // auxiliar matemático para inyectar el color respetando el anti-aliasing (bordes suaves) originales
-    private int mezclarConTransparencia(Color color, int alphaOriginal) {
+    private static int mezclarConTransparencia(Color color, int alphaOriginal) {
         return (alphaOriginal << 24) | (color.getRGB() & 0x00FFFFFF);
     }
 
     // método para obtener imágenes estáticas sin alterar (como el fondo del asesinato)
-    private Image obtenerImagenFija(String ruta) {
+    public static Image obtenerImagenFija(String ruta) {
         if (cacheMoldes.containsKey(ruta)) return cacheMoldes.get(ruta);
         try {
-            URL url = getClass().getClassLoader().getResource(ruta);
+            URL url = PanelJuego.class.getClassLoader().getResource(ruta);
             if (url != null) {
                 BufferedImage img = ImageIO.read(url);
                 cacheMoldes.put(ruta, img);
@@ -168,6 +174,30 @@ public class PanelJuego extends JPanel {
         addMouseListener(mouseHandler);
         addMouseMotionListener(mouseHandler);
 
+        // listener adicional para los botones del hud
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                boolean clickHUD = false;
+                if (rectKill != null && rectKill.contains(e.getPoint())) { manejadorEntrada.accionMatar = true; clickHUD = true; }
+                if (rectReport != null && rectReport.contains(e.getPoint())) { manejadorEntrada.accionReportar = true; clickHUD = true; }
+                if (rectVent != null && rectVent.contains(e.getPoint())) { manejadorEntrada.accionVentilar = true; clickHUD = true; }
+                if (rectSabotage != null && rectSabotage.contains(e.getPoint())) { manejadorEntrada.accionSabotaje = true; clickHUD = true; }
+                
+                if (clickHUD) {
+                    com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+                }
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                manejadorEntrada.accionMatar = false;
+                manejadorEntrada.accionReportar = false;
+                manejadorEntrada.accionVentilar = false;
+                manejadorEntrada.accionSabotaje = false;
+            }
+        });
+
         this.pantallaVotacion = new PantallaVotacion(estadoJuego, manejadorEntrada);
     }
 
@@ -185,7 +215,7 @@ public class PanelJuego extends JPanel {
         EstadoJuego.Fase fase = estadoJuego.getFaseActual();
 
         if (fase == EstadoJuego.Fase.VOTACION) {
-            pantallaVotacion.render(g);
+            pantallaVotacion.render(g, getWidth(), getHeight());
             return;
         }
 
@@ -298,6 +328,55 @@ public class PanelJuego extends JPanel {
         if (estadoJuego.getJugadores().isEmpty() && local == null) {
             g.setColor(Color.WHITE);
             g.drawString("No hay jugadores. Inicia partida.", 300, 300);
+        }
+        
+        dibujarHUD(g);
+    }
+
+    /**
+     * Dibuja los botones de acción en la pantalla (HUD)
+     */
+    private void dibujarHUD(Graphics g) {
+        Jugador local = estadoJuego.getJugadorLocal();
+        if (local == null) return;
+
+        int w = getWidth();
+        int h = getHeight();
+        int btnSize = 100;
+        int gap = 20;
+
+        // Posiciones dinámicas basadas en el tamaño actual de la ventana
+        rectKill = new Rectangle(w - btnSize - gap, h - btnSize - gap, btnSize, btnSize);
+        rectReport = new Rectangle(w - (btnSize + gap) * 2, h - btnSize - gap, btnSize, btnSize);
+        rectVent = new Rectangle(w - btnSize - gap, h - (btnSize + gap) * 2, btnSize, btnSize);
+        rectSabotage = new Rectangle(w - (btnSize + gap) * 2, h - (btnSize + gap) * 2, btnSize, btnSize);
+
+        if (local.isVivo()) {
+            // Botón Reportar (Siempre visible para tripulantes y impostores vivos)
+            dibujarBotonAccion(g, "Reportar_boton.png", rectReport, manejadorEntrada.accionReportar);
+
+            if (local.isImpostor()) {
+                // Botones exclusivos de Impostor
+                dibujarBotonAccion(g, "botonkill.png", rectKill, manejadorEntrada.accionMatar);
+                dibujarBotonAccion(g, "Ventana_boton.png", rectVent, manejadorEntrada.accionVentilar);
+                dibujarBotonAccion(g, "Sabotaje_boton.png", rectSabotage, manejadorEntrada.accionSabotaje);
+            }
+        }
+    }
+
+    /**
+     * Dibuja un botón individual con animación de pulsación
+     */
+    private void dibujarBotonAccion(Graphics g, String imgName, Rectangle rect, boolean presionado) {
+        Image img = obtenerImagenFija(imgName);
+        if (img == null) return;
+
+        if (presionado) {
+            // Animación: reducir un poco el tamaño al presionar
+            int offset = 8;
+            g.drawImage(img, rect.x + offset, rect.y + offset, rect.width - offset * 2, rect.height - offset * 2, null);
+        } else {
+            g.drawImage(img, rect.x, rect.y, rect.width, rect.height, null);
         }
     }
 

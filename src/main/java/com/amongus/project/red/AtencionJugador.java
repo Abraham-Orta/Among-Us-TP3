@@ -122,11 +122,15 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     Servidor.enviarATodos(lineaRecibida);
                     Servidor.verificarVictoria();
                 }
-                // Si alguien reporta un cuerpo, avisamos a todos para abrir la votación
+                // si alguien reporta un cuerpo, avisamos a todos para abrir la votación
                 else if (lineaRecibida.equals("REPORTAR:")) {
                     Servidor.enviarATodos(lineaRecibida);
                 }
-                // Si alguien termina todas sus tareas
+                // si alguien vota, reenviamos el voto a todos
+                else if (lineaRecibida.startsWith("VOTO:")) {
+                    Servidor.enviarATodos(lineaRecibida);
+                }
+                // si alguien termina todas sus tareas
                 else if (lineaRecibida.startsWith("TAREA_LISTA:")) {
                     Servidor.enviarATodos(lineaRecibida);
                 }

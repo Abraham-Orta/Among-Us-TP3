@@ -32,7 +32,15 @@ public class EstadoJuego {
     
     // Getters y Setters para sabotajes
     public boolean areLucesSaboteadas() { return lucesSaboteadas; }
-    public void setLucesSaboteadas(boolean estado) { this.lucesSaboteadas = estado; }
+    public void setLucesSaboteadas(boolean estado) { 
+        if (this.lucesSaboteadas == estado) return; // solo actuar si el estado cambia realmente
+        this.lucesSaboteadas = estado; 
+        if (estado) {
+            com.amongus.project.vista.ReproductorMusica.manejarAlarma("Alarm_sabotaje.wav", true);
+        } else {
+            com.amongus.project.vista.ReproductorMusica.manejarAlarma("Alarm_sabotaje.wav", false);
+        }
+    }
 
     public void agregarJugador(Jugador j) {
         jugadores.add(j);
@@ -50,10 +58,15 @@ public class EstadoJuego {
         this.jugadorLocal = jugadorLocal;
         this.agregarJugador(jugadorLocal);
     }
-    
+
     public Fase getFaseActual() { return faseActual; }
-    public void setFaseActual(Fase f) { this.faseActual = f; }
-    
+    public void setFaseActual(Fase f) { 
+        if (this.faseActual != f && f == Fase.VOTACION) {
+            com.amongus.project.vista.ReproductorMusica.reproducirEfecto("reporte.wav");
+        }
+
+        this.faseActual = f; 
+    }    
     public Mapa getMapa() { return mapa; }
     public void setMapa(Mapa mapa) { this.mapa = mapa; }
 }

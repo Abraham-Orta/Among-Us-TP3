@@ -60,6 +60,24 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 String[] p = mensaje.substring(6).split(",");
                 String atacante = p[0];
                 String victima = p[1];
+                
+                // verificamos si el jugador de esta ventana es el atacante o la victima
+                Jugador local = estado.getJugadorLocal();
+                boolean involucrado = (local != null && (local.getNombre().equals(atacante) || local.getNombre().equals(victima)));
+                
+                if (involucrado) {
+                    // musica de fondo para la cinematica con el volumen bajito (-10 decibelios)
+                    com.amongus.project.vista.ReproductorMusica.reproducirEfectoConVolumen("impostor_killMusic.wav", -10.0f);
+                    
+                    // sonido de ataque "kill.wav" sincronizado con los frames (esperamos 480 milisegundos)
+                    new Thread(() -> {
+                        try {
+                            Thread.sleep(480);
+                            com.amongus.project.vista.ReproductorMusica.reproducirEfecto("Kill.wav");
+                        } catch (InterruptedException e) {}
+                    }).start();
+                }
+
                 for (Jugador j : estado.getJugadores()) {
                     if (j.getNombre().equals(victima)) { j.setVivo(false); }
                     if (j.getNombre().equals(atacante)) { j.iniciarAnimacionAtaque(); }
@@ -68,13 +86,35 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 System.err.println("Error procesando MATAR: " + mensaje);
             }
         } else if (mensaje.startsWith("ANIMACION_MATAR:")) {
-            // Ya no se usa, la animación se procesa con MATAR
+            // ya no se usa, la animación se procesa con matar
         } else if (mensaje.startsWith("REPORTAR:")) {
             estado.setFaseActual(EstadoJuego.Fase.VOTACION);
             if (panelJuego.getPantallaVotacion() != null)
                 panelJuego.getPantallaVotacion().reiniciarVotacion();
             for (Jugador j : estado.getJugadores()) j.resetVoto();
             if (estado.getJugadorLocal() != null) estado.getJugadorLocal().resetVoto();
+        } else if (mensaje.startsWith("VOTO:")) {
+            // procesar votos remotos
+            try {
+                String[] partes = mensaje.substring(5).split(",");
+                String votante = partes[0];
+                String votado = partes[1];
+                for (Jugador j : estado.getJugadores()) {
+                    if (j.getNombre().equals(votante)) {
+                        if (votado.equals("SKIP")) {
+                            j.votarSkip();
+                        } else {
+                            for (Jugador obj : estado.getJugadores()) {
+                                if (obj.getNombre().equals(votado)) {
+                                    j.votarJugador(obj);
+                                    break;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+            } catch (Exception e) {}
         } else if (mensaje.startsWith("TAREA_LISTA:")) {
             tripulantesConTareasListas++;
             int total = 0;
@@ -169,17 +209,28 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     }
 
     private void finalizarJuego(String mensajeGanador) {
+        if (estado.getFaseActual() == EstadoJuego.Fase.FINALIZADO) return; // evitar múltiples llamadas
         estado.setFaseActual(EstadoJuego.Fase.FINALIZADO);
-        corriendo = false;
+        
+        // Hilo paralelo para esperar 3 segundos y dejar que la cinemática de muerte termine
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000); // 3 segundos de espera (la cinemática dura ~2.8s)
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            
+            corriendo = false;
+            String equipo = mensajeGanador.contains("Impostores") ? "Impostores" : "Tripulantes";
+            GestorDatos.guardarPartida(equipo, estado.getJugadores().size());
 
-        String equipo = mensajeGanador.contains("Impostores") ? "Impostores" : "Tripulantes";
-        GestorDatos.guardarPartida(equipo, estado.getJugadores().size());
-
-        SwingUtilities.invokeLater(() -> {
-            PantallaFinJuego dialog = new PantallaFinJuego(null, mensajeGanador);
-            dialog.setVisible(true);
-            System.exit(0);
-        });
+            SwingUtilities.invokeLater(() -> {
+                PantallaFinJuego dialog = new PantallaFinJuego(null, mensajeGanador);
+                dialog.setVisible(true);
+                // System.exit(0) se debe manejar desde PantallaFinJuego idealmente, pero lo mantenemos para compatibilidad
+                // System.exit(0); // <-- comentado si quieres que cierre gracefully, lo dejamos por ahora si es como estaba
+            });
+        }).start();
     }
 
     private void renderizar() {

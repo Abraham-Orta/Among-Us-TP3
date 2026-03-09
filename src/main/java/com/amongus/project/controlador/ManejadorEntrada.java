@@ -5,6 +5,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import com.amongus.project.modelo.EstadoJuego;
+import com.amongus.project.modelo.Jugador;
 
 /**
  * ManejadorEntrada
@@ -93,11 +94,30 @@ public class ManejadorEntrada extends KeyAdapter {
         if (c == KeyEvent.VK_A || c == KeyEvent.VK_LEFT)  izquierda = true;
         if (c == KeyEvent.VK_D || c == KeyEvent.VK_RIGHT) derecha   = true;
 
-        // Acciones
-        if (c == KeyEvent.VK_Q) accionMatar    = true;
-        if (c == KeyEvent.VK_E) accionVentilar = true;
-        if (c == KeyEvent.VK_R) accionReportar = true;
-        if (c == KeyEvent.VK_H) accionSabotaje = true;
+        // acciones: obtenemos el jugador local para saber su rol
+        Jugador local = estadoJuego.getJugadorLocal();
+        boolean esImpostor = (local != null && local.isImpostor());
+
+        if (c == KeyEvent.VK_Q) {
+            // solo suena si el jugador es impostor
+            if (!accionMatar && esImpostor) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+            accionMatar    = true;
+        }
+        if (c == KeyEvent.VK_E) {
+            // solo suena si el jugador es impostor
+            if (!accionVentilar && esImpostor) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+            accionVentilar = true;
+        }
+        if (c == KeyEvent.VK_R) {
+            // este sonido de reportar suena para todos (tripulantes e impostores)
+            if (!accionReportar) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+            accionReportar = true;
+        }
+        if (c == KeyEvent.VK_H) {
+            // solo suena si el jugador es impostor
+            if (!accionSabotaje && esImpostor) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+            accionSabotaje = true;
+        }
 
         // Depuración: forzar fases (útil en PruebaDirecta)
         if (c == KeyEvent.VK_V) {
