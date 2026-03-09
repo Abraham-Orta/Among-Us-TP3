@@ -40,6 +40,13 @@ public class Jugador extends Personaje {
     private int cooldownReporte     = 0;
     private int cooldownSabotaje    = 0;
 
+    // Animación de Asesinato
+    private boolean animandoAsesinato = false;
+    private int frameAsesinato = 0;
+    private int xVictima = -1;
+    private int yVictima = -1;
+    private String nombreVictimaMatar = null;
+
     public Jugador(String nombre, int x, int y, Color color, boolean impostor) {
         super(x, y, 4);
         this.nombre   = nombre;
@@ -102,6 +109,22 @@ public class Jugador extends Personaje {
         if (cooldownReporte     > 0) cooldownReporte--;
         if (cooldownSabotaje    > 0) cooldownSabotaje--;
 
+        // Procesar animación de asesinato (si la hay)
+        if (animandoAsesinato) {
+            frameAsesinato++;
+            int MAX_FRAMES_ANIM = 30; // 0.5 segundos a 60 FPS
+            if (frameAsesinato >= MAX_FRAMES_ANIM) {
+                animandoAsesinato = false;
+                // Si este cliente es el asesisno real (quien apretó la tecla),
+                // aquí consolida el la muerte enviando el paquete real de la víctima
+                if (nombreVictimaMatar != null && clienteRed != null) {
+                    clienteRed.enviarMensaje("MATAR:" + nombreVictimaMatar);
+                    nombreVictimaMatar = null;
+                }
+            }
+            return; // Mientras animamos, no mover ni realizar acciones
+        }
+
         // Jugador inhabilitado: no hace nada
         if (!vivo) return;
 
@@ -158,14 +181,25 @@ public class Jugador extends Personaje {
                 int dx = this.x - victima.getX();
                 int dy = this.y - victima.getY();
                 if (Math.sqrt(dx * dx + dy * dy) <= 50) {
-                    victima.setVivo(false);
-                    System.out.println(nombre + " paralizó a " + victima.getNombre());
                     cooldownAsesinato = 600;
-                    if (clienteRed != null) clienteRed.enviarMensaje("MATAR:" + victima.getNombre());
+                    this.nombreVictimaMatar = victima.getNombre();
+                    if (clienteRed != null) {
+                        clienteRed.enviarMensaje("ANIMACION_MATAR:" + victima.getNombre());
+                    } else {
+                        // Modo offline (Prueba directa sin red)
+                        iniciarAnimacionAsesinato(victima.getX(), victima.getY());
+                    }
                     break;
                 }
             }
         }
+    }
+
+    public void iniciarAnimacionAsesinato(int xObj, int yObj) {
+        this.animandoAsesinato = true;
+        this.frameAsesinato = 0;
+        this.xVictima = xObj;
+        this.yVictima = yObj;
     }
 
     private void intentarUsarAlcantarilla() {
@@ -234,4 +268,9 @@ public class Jugador extends Personaje {
     public boolean isImpostor()          { return impostor; }
     public boolean isVivo()              { return vivo; }
     public void    setVivo(boolean vivo) { this.vivo = vivo; }
+    
+    public boolean isAnimandoAsesinato() { return animandoAsesinato; }
+    public int     getFrameAsesinato()   { return frameAsesinato; }
+    public int     getXVictima()         { return xVictima; }
+    public int     getYVictima()         { return yVictima; }
 }

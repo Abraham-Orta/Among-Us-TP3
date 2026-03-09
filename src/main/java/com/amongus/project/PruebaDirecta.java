@@ -35,6 +35,7 @@ public class PruebaDirecta {
         lanzarCliente("Jugador1", true);   // host → ve el botón Iniciar Partida
         lanzarCliente("Jugador2", false);
         lanzarCliente("Jugador3", false);
+        lanzarCliente("Jugador4", false);
     }
 
     // -------------------------------------------------------

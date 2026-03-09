@@ -175,6 +175,27 @@ public class PanelJuego extends JPanel {
 
         // Vivo
         g.setColor(j.getColor());
+        
+        // --- ANIMACIÓN DE ASESINATO ---
+        if (j.isAnimandoAsesinato()) {
+            // Interpolar posición hacia la víctima
+            int progreso = j.getFrameAsesinato();
+            int totalFrames = 30;
+            float ratio = (float) progreso / totalFrames;
+            x = (int) (j.getX() + (j.getXVictima() - j.getX()) * ratio);
+            y = (int) (j.getY() + (j.getYVictima() - j.getY()) * ratio);
+            
+            // Dibujar efecto de sangre/ataque intermitente
+            if (progreso % 4 < 2) {
+                g.setColor(Color.RED);
+                g.fillOval(j.getXVictima() - 10, j.getYVictima() - 10, 50, 50);
+                g.setColor(Color.WHITE);
+                g.drawLine(j.getXVictima(), j.getYVictima(), j.getXVictima() + 30, j.getYVictima() + 40);
+                g.drawLine(j.getXVictima() + 30, j.getYVictima(), j.getXVictima(), j.getYVictima() + 40);
+            }
+            g.setColor(j.getColor()); // Restaurar color para dibujar al impostor moviéndose
+        }
+
         if (dir == 1) g.fillRect(x - 5,    y + 10, 10, 25);
         else          g.fillRect(x + w - 5, y + 10, 10, 25);
         g.fillRoundRect(x, y, w, h, 15, 15);

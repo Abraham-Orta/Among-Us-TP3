@@ -60,6 +60,21 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             for (Jugador j : estado.getJugadores()) {
                 if (j.getNombre().equals(victima)) { j.setVivo(false); break; }
             }
+        } else if (mensaje.startsWith("ANIMACION_MATAR:")) {
+            String[] partes = mensaje.substring(16).split(",");
+            if (partes.length >= 2) {
+                String impostorNombre = partes[0];
+                String victimaNombre = partes[1];
+                Jugador impostor = null;
+                Jugador victima = null;
+                for (Jugador j : estado.getJugadores()) {
+                    if (j.getNombre().equals(impostorNombre)) impostor = j;
+                    if (j.getNombre().equals(victimaNombre)) victima = j;
+                }
+                if (impostor != null && victima != null) {
+                    impostor.iniciarAnimacionAsesinato(victima.getX(), victima.getY());
+                }
+            }
         } else if (mensaje.startsWith("REPORTAR:")) {
             estado.setFaseActual(EstadoJuego.Fase.VOTACION);
             if (panelJuego.getPantallaVotacion() != null)

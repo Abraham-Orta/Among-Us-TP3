@@ -117,6 +117,11 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     Servidor.enviarATodos(lineaRecibida);
                     Servidor.verificarVictoria();
                 }
+                // Activar animación localmente antes de ejecutar matar
+                else if (lineaRecibida.startsWith("ANIMACION_MATAR:")) {
+                    String victima = lineaRecibida.substring(16);
+                    Servidor.enviarATodos("ANIMACION_MATAR:" + this.nombreJugador + "," + victima);
+                }
                 // Si alguien reporta un cuerpo, avisamos a todos para abrir la votación
                 else if (lineaRecibida.equals("REPORTAR:")) {
                     Servidor.enviarATodos(lineaRecibida);
