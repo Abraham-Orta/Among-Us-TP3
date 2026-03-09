@@ -34,6 +34,11 @@ public class Jugador extends Personaje {
     private boolean votoSkip    = false;
     private Jugador votoJugador = null;
 
+    // Animaciones
+    private long tiempoInicioAsesinato = 0;
+    private long tiempoInicioMuerte = 0;
+    private boolean atacando = false;
+
     // Cooldowns (en frames a 60 FPS)
     private int cooldownAsesinato   = 0;
     private int cooldownVentilacion = 0;
@@ -159,6 +164,7 @@ public class Jugador extends Personaje {
                 int dy = this.y - victima.getY();
                 if (Math.sqrt(dx * dx + dy * dy) <= 50) {
                     victima.setVivo(false);
+                    this.iniciarAnimacionAtaque();
                     System.out.println(nombre + " paralizó a " + victima.getNombre());
                     cooldownAsesinato = 600;
                     if (clienteRed != null) clienteRed.enviarMensaje("MATAR:" + victima.getNombre());
@@ -233,5 +239,27 @@ public class Jugador extends Personaje {
     public String  getNombre()           { return nombre; }
     public boolean isImpostor()          { return impostor; }
     public boolean isVivo()              { return vivo; }
-    public void    setVivo(boolean vivo) { this.vivo = vivo; }
+    
+    public void setVivo(boolean vivo) { 
+        if (this.vivo && !vivo) {
+            this.tiempoInicioMuerte = System.currentTimeMillis();
+        }
+        this.vivo = vivo; 
+    }
+
+    public long getTiempoInicioMuerte() { return tiempoInicioMuerte; }
+
+    public void iniciarAnimacionAtaque() {
+        this.atacando = true;
+        this.tiempoInicioAsesinato = System.currentTimeMillis();
+    }
+
+    public boolean isAtacando() {
+        if (atacando && System.currentTimeMillis() - tiempoInicioAsesinato > 2880) { // 48 frames a ~60ms c/u
+            atacando = false;
+        }
+        return atacando;
+    }
+
+    public long getTiempoInicioAsesinato() { return tiempoInicioAsesinato; }
 }

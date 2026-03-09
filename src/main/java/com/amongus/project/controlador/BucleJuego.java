@@ -50,7 +50,7 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 int nx = Integer.parseInt(p[1]);
                 int ny = Integer.parseInt(p[2]);
                 for (Jugador j : estado.getJugadores()) {
-                    if (j.getNombre().equals(nombre)) { j.setX(nx); j.setY(ny); break; }
+                    if (j.getNombre().equals(nombre)) { j.recibirPosicionRed(nx, ny); break; }
                 }
             } catch (Exception e) {
                 System.err.println("Error procesando MOVER: " + mensaje);
@@ -119,10 +119,16 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
 
         } else if (fase == EstadoJuego.Fase.JUGANDO) {
 
+            // Actualizar físicas y teclado del jugador local
             Jugador jugadorLocal = estado.getJugadorLocal();
             if (jugadorLocal != null) {
                 // ← Pasamos el ManejadorEntrada de ESTA ventana, no uno estático
                 jugadorLocal.actualizar(panelJuego.getManejadorEntrada());
+            }
+
+            // Actualizar interpolación visual de TODOS los jugadores (para evitar lag visual en red)
+            for (Jugador j : estado.getJugadores()) {
+                j.actualizarInterpolacion();
             }
 
             // Solo verificar victoria localmente si NO hay red.
