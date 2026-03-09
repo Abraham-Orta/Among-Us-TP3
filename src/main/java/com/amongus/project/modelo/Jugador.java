@@ -214,8 +214,9 @@ public class Jugador extends Personaje {
     //  RED
     // ==========================================
 
-    // Throttling: enviar posición máximo cada 100ms para no inundar la red
-    private static final long INTERVALO_ENVIO_NS = 100_000_000L; // 100ms
+    // Throttling: enviar posición máximo cada 33ms (~30 FPS).
+    // Esto balancea una red ligera (para no sobrecargar el servidor) con un movimiento fluido.
+    private static final long INTERVALO_ENVIO_NS = 33_333_333L; // 33ms
     private long ultimoEnvioNano = 0;
 
     private void enviarPosicionSiCambio() {
