@@ -394,7 +394,12 @@ public class PantallaVotacion {
             g2.fillRect(rect.x + 15, rect.y + 10, 40, 40);
             
             // nombre del jugador
-            g2.setColor(Color.WHITE);
+            Jugador local = estadoJuego.getJugadorLocal();
+            if (j.isImpostor() && local != null && local.isImpostor()) {
+                g2.setColor(Color.RED);
+            } else {
+                g2.setColor(Color.WHITE);
+            }
             g2.setFont(cargarFuente(20f));
             g2.drawString(j.getNombre(), rect.x + 70, rect.y + 35);
             

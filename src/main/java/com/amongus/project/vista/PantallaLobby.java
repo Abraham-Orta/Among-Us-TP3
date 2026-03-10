@@ -29,6 +29,7 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private final String[] MAPAS_DISPONIBLES = {"mapa1.png", "mapa2.png"};
 
     private boolean soyImpostor = false; // Rol asignado por el servidor
+    private List<String> companerosImpostores = new ArrayList<>(); // Lista de compañeros impostores
 
     // Cada cliente tiene su propio EstadoJuego — NO compartido entre ventanas
     private EstadoJuego estadoJuego;
@@ -304,7 +305,16 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
 
         } else if (mensaje.startsWith("ROL:")) {
             // El servidor nos susurra el rol
-            soyImpostor = mensaje.substring(4).equals("IMPOSTOR");
+            String[] partes = mensaje.split(":");
+            soyImpostor = partes[1].equals("IMPOSTOR");
+            
+            if (soyImpostor && partes.length >= 3) {
+                String[] compas = partes[2].split(",");
+                for (String c : compas) {
+                    companerosImpostores.add(c.trim());
+                }
+            }
+            
             System.out.println("Rol asignado: " + (soyImpostor ? "Impostor" : "Tripulante"));
 
         } else if (mensaje.startsWith("JUEGO_INICIADO")) {
@@ -331,13 +341,14 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             jugadorLocal.setEstadoJuego(estadoJuego);
             estadoJuego.setJugadorLocal(jugadorLocal);
 
-            // Crear jugadores remotos (sin conocer sus roles, que son secretos)
+            // Crear jugadores remotos (sin conocer sus roles a menos que seamos impostores)
             for (int idx = 0; idx < jugadoresConectados.size(); idx++) {
                 String nombre = jugadoresConectados.get(idx);
                 if (!nombre.equals(nombreJugador)) {
                     Color colorRemoto = todosColores[idx % todosColores.length];
+                    boolean esRemotoImpostor = soyImpostor && companerosImpostores.contains(nombre);
                     Jugador otro = new Jugador(nombre, 150 + (idx * 50), 100,
-                                              colorRemoto, false);
+                                              colorRemoto, esRemotoImpostor);
                     otro.setEstadoJuego(estadoJuego);
                     estadoJuego.agregarJugador(otro);
                 }

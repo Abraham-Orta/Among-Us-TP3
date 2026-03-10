@@ -309,13 +309,9 @@ public class PanelJuego extends JPanel {
         // Capa 2: Jugadores
         for (Jugador j : estadoJuego.getJugadores()) {
             dibujarTripulante(g, j);
-            g.setColor(Color.WHITE);
-            g.drawString(j.getNombre(), j.getX(), j.getY() - 10);
         }
         if (local != null && !estadoJuego.getJugadores().contains(local)) {
             dibujarTripulante(g, local);
-            g.setColor(Color.WHITE);
-            g.drawString(local.getNombre(), local.getX(), local.getY() - 10);
         }
 
         // Capa 3: Niebla de guerra
@@ -534,8 +530,13 @@ public class PanelJuego extends JPanel {
         }
 
         // HUD - Textos de nombre y rol
-        g.setColor(Color.WHITE);
-        g.drawString(j.getNombre(), x, y - 10);
+        if (j.isImpostor() && local != null && local.isImpostor()) {
+            g.setColor(Color.RED);
+            g.drawString(j.getNombre(), x, y - 10);
+        } else {
+            g.setColor(Color.WHITE);
+            g.drawString(j.getNombre(), x, y - 10);
+        }
 
         if (j == local && j.isImpostor()) {
             g.setColor(Color.RED);

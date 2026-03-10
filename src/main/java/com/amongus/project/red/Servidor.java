@@ -92,9 +92,22 @@ import java.util.Map;public class Servidor {
         }
         partidaIniciada = true;
 
-        // Susurrar el rol individualmente → nadie sabe el rol de los demás
+        // Construir la lista de nombres de impostores separados por comas
+        StringBuilder listaImpostores = new StringBuilder();
         for (AtencionJugador j : listaJugadores) {
-            j.enviarMensaje("ROL:" + (j.esImpostor ? "IMPOSTOR" : "TRIPULANTE"));
+            if (j.esImpostor && j.getNombreJugador() != null) {
+                if (listaImpostores.length() > 0) listaImpostores.append(",");
+                listaImpostores.append(j.getNombreJugador());
+            }
+        }
+
+        // Susurrar el rol individualmente → si es impostor, incluir a sus compañeros
+        for (AtencionJugador j : listaJugadores) {
+            if (j.esImpostor) {
+                j.enviarMensaje("ROL:IMPOSTOR:" + listaImpostores.toString());
+            } else {
+                j.enviarMensaje("ROL:TRIPULANTE");
+            }
         }
 
         // Avisar a todos que la partida arranca con el mapa elegido
