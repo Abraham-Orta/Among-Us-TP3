@@ -125,10 +125,15 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                 // si alguien reporta un cuerpo, avisamos a todos para abrir la votación
                 else if (lineaRecibida.equals("REPORTAR:")) {
                     Servidor.enviarATodos(lineaRecibida);
+                    Servidor.iniciarVotacion();
                 }
                 // si alguien vota, reenviamos el voto a todos
                 else if (lineaRecibida.startsWith("VOTO:")) {
                     Servidor.enviarATodos(lineaRecibida);
+                    try {
+                        String[] partes = lineaRecibida.substring(5).split(",");
+                        Servidor.registrarVoto(partes[0], partes[1]);
+                    } catch (Exception e) {}
                 }
                 // si alguien termina todas sus tareas
                 else if (lineaRecibida.startsWith("TAREA_LISTA:")) {
@@ -180,6 +185,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
             // Enviar lista actualizada
             Servidor.enviarListaJugadores();
             Servidor.verificarVictoria();
+            Servidor.verificarVotacionCompleta();
             
             try { // Intentamos cerrar el socket bien
                 socketJugador.close(); // Cerramos conexion

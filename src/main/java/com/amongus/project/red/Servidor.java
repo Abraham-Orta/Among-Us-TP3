@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.CopyOnWriteArrayList;
-
-public class Servidor {
+import java.util.HashMap;
+import java.util.Map;public class Servidor {
 
     private static final int PUERTO        = 1234;
     private static final int MAX_JUGADORES = 10;
@@ -18,6 +18,10 @@ public class Servidor {
 
     public static CopyOnWriteArrayList<AtencionJugador> listaJugadores = new CopyOnWriteArrayList<>();
     public static boolean partidaIniciada = false;
+    
+    // Estado de votación
+    public static boolean enVotacion = false;
+    private static Map<String, String> votosActuales = new HashMap<>();
 
     public static void main(String[] args) {
         System.out.println("Iniciando el servidor de Among Us...");
@@ -99,24 +103,121 @@ public class Servidor {
 
     public static void finalizarPartida(String equipoGanador) {
         partidaIniciada = false;
+        enVotacion = false;
         System.out.println("La partida terminó. Ganaron: " + equipoGanador);
         enviarATodos("FIN:" + equipoGanador);
         GestorDatos.guardarPartida(equipoGanador, listaJugadores.size());
         System.out.println("Datos guardados en el XML.");
     }
 
-    public static void verificarVictoria() {
+    public static void iniciarVotacion() {
+        enVotacion = true;
+        votosActuales.clear();
+        System.out.println("Servidor: Votación iniciada.");
+    }
+
+    public static synchronized void registrarVoto(String votante, String votado) {
+        if (!enVotacion) return;
+        
+        votosActuales.put(votante, votado);
+        System.out.println("Servidor: Voto registrado de " + votante + " -> " + votado);
+        
+        verificarVotacionCompleta();
+    }
+
+    public static synchronized void verificarVotacionCompleta() {
+        if (!enVotacion) return;
+        
+        int jugadoresVivos = 0;
+        for (AtencionJugador j : listaJugadores) {
+            if (j.estaVivo) jugadoresVivos++;
+        }
+        
+        if (votosActuales.size() >= jugadoresVivos && jugadoresVivos > 0) {
+            System.out.println("Servidor: Todos los vivos han votado. Procesando resultados...");
+            procesarResultadosVotacion();
+        }
+    }
+
+    private static void procesarResultadosVotacion() {
+        enVotacion = false;
+        
+        Map<String, Integer> conteo = new HashMap<>();
+        int votosSkip = 0;
+        
+        for (String votado : votosActuales.values()) {
+            if (votado.equals("SKIP")) {
+                votosSkip++;
+            } else {
+                conteo.put(votado, conteo.getOrDefault(votado, 0) + 1);
+            }
+        }
+        
+        String masVotado = null;
+        int maxVotos = 0;
+        boolean empate = false;
+        
+        for (Map.Entry<String, Integer> entry : conteo.entrySet()) {
+            if (entry.getValue() > maxVotos) {
+                maxVotos = entry.getValue();
+                masVotado = entry.getKey();
+                empate = false;
+            } else if (entry.getValue() == maxVotos) {
+                empate = true;
+            }
+        }
+        
+        String mensajeResultado = "";
+        String nombreExpulsado = "NADIE";
+        
+        if (votosSkip >= maxVotos || empate || masVotado == null) {
+            mensajeResultado = "NADIE FUE EXPULSADO";
+            nombreExpulsado = "NADIE";
+        } else {
+            boolean eraImpostor = false;
+            for (AtencionJugador j : listaJugadores) {
+                if (j.getNombreJugador() != null && j.getNombreJugador().equals(masVotado)) {
+                    j.estaVivo = false;
+                    eraImpostor = j.esImpostor;
+                    break;
+                }
+            }
+            nombreExpulsado = masVotado;
+            
+            int impostoresRestantes = 0;
+            for (AtencionJugador j : listaJugadores) {
+                if (j.estaVivo && j.esImpostor) impostoresRestantes++;
+            }
+            
+            if (eraImpostor) {
+                mensajeResultado = masVotado + " ERA UN IMPOSTOR. QUEDAN " + impostoresRestantes + " IMPOSTORES";
+            } else {
+                mensajeResultado = masVotado + " NO ERA UN IMPOSTOR. QUEDAN " + impostoresRestantes + " IMPOSTORES";
+            }
+        }
+        
+        System.out.println("Servidor: " + mensajeResultado);
+        enviarATodos("RESULTADO_VOTACION:" + nombreExpulsado + ":" + mensajeResultado);
+        
+        verificarVictoria();
+    }
+
+    public static synchronized void verificarVictoria() {
         if (!partidaIniciada) return;
 
         int impostoresVivos = 0;
         int tripulantesVivos = 0;
 
         for (AtencionJugador j : listaJugadores) {
-            if (j.estaVivo) {
+            // Asegurarnos de que el jugador sí definió un rol y está jugando (tiene nombre)
+            if (j.estaVivo && j.getNombreJugador() != null) {
                 if (j.esImpostor) impostoresVivos++;
                 else tripulantesVivos++;
             }
         }
+
+        // Si ya no queda nadie o no se ha evaluado correctamente a todos
+        if (tripulantesVivos == 0 && impostoresVivos == 0) return;
 
         if (impostoresVivos >= tripulantesVivos && tripulantesVivos > 0) {
             finalizarPartida("Impostores");

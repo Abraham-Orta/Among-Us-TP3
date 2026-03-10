@@ -39,7 +39,7 @@ public class PantallaVotacion {
     // aumentamos el tiempo a 60 segundos (3600 frames) para que los jugadores tengan tiempo
     private int temporizadorVotacion = 3600; 
     private boolean mostrandoResultados = false; // bandera para saber si ya estamos mostrando quién perdió
-    private int temporizadorResultados = 300; // 300 frames = 5 segundos mostrando el mensaje final
+    private int temporizadorResultados = 600; // 600 frames = 10 segundos mostrando el mensaje final
     private String mensajeResultado = ""; // el texto que dirá quién fue expulsado
     private Jugador jugadorExpulsado = null; // jugador que ha sido expulsado
 
@@ -135,7 +135,7 @@ public class PantallaVotacion {
     public void reiniciarVotacion() {
         temporizadorVotacion = 3600;
         mostrandoResultados = false;
-        temporizadorResultados = 300;
+        temporizadorResultados = 600;
         mensajeResultado = "";
         jugadorExpulsado = null;
         letrasMostradas = 0;
@@ -177,30 +177,14 @@ public class PantallaVotacion {
         
         List<Jugador> jugadores = estadoJuego.getJugadores();
         
-        // --- simulación de bots para que no tengas que esperar solo ---
-        // (como estás probando localmente, haremos que los otros jugadores voten solos)
-        for (Jugador j : jugadores) {
-            if (j.isVivo() && !j.yaVoto() && j != estadoJuego.getJugadorLocal()) {
-                // hay un 1% de probabilidad en cada frame de que un bot vote
-                if (Math.random() < 0.01) { 
-                    if (Math.random() < 0.5) j.votarSkip(); // a veces salta
-                    else j.votarJugador(jugadores.get((int)(Math.random() * jugadores.size()))); // a veces vota a alguien al azar
-                }
+        // --- simulación de bots ELIMINADA para el multijugador real ---
+        
+        // 3. fin de votación por tiempo: forzamos el skip del jugador si no lo ha hecho
+        if (temporizadorVotacion <= 0) {
+            Jugador local = estadoJuego.getJugadorLocal();
+            if (local != null && local.isVivo() && !local.yaVoto()) {
+                local.votarSkip();
             }
-        }
-
-        // verificar si todos los jugadores vivos ya votaron
-        boolean todosVotaron = true;
-        for (Jugador j : jugadores) {
-            if (j.isVivo() && !j.yaVoto()) {
-                todosVotaron = false;
-                break;
-            }
-        }
-
-        // 3. fin de votación: si el tiempo llega a cero o todos ya votaron
-        if (temporizadorVotacion <= 0 || todosVotaron) {
-            contarVotos(jugadores); // procesamos quién se va de la nave
             return;
         }
 
@@ -266,72 +250,16 @@ public class PantallaVotacion {
     }
     
     /**
-     * cuenta los votos de todos los jugadores y decide quién es expulsado.
+     * Recibe los resultados del servidor y activa la pantalla de animación.
      */
-    private void contarVotos(List<Jugador> jugadores) {
-        Map<Jugador, Integer> conteo = new HashMap<>(); // diccionario para guardar [jugador -> cantidad votos]
-        int votosSkip = 0; // votos nulos
-        
-        // recorrer los votos de cada jugador
-        for (Jugador j : jugadores) {
-            if (j.yaVoto()) {
-                if (j.isVotoSkip()) {
-                    votosSkip++; // suma a los saltos
-                } else if (j.getVotoJugador() != null) {
-                    Jugador votado = j.getVotoJugador();
-                    // le sumamos 1 voto al que eligió
-                    conteo.put(votado, conteo.getOrDefault(votado, 0) + 1); 
-                }
-            }
-        }
-        
-        // encontrar al jugador que más votos recibió
-        Jugador masVotado = null;
-        int maxVotos = 0;
-        boolean empate = false; // para evitar expulsar a alguien si hay un empate
-        
-        for (Map.Entry<Jugador, Integer> entry : conteo.entrySet()) {
-            if (entry.getValue() > maxVotos) {
-                maxVotos = entry.getValue();
-                masVotado = entry.getKey();
-                empate = false; // rompimos el empate anterior
-            } else if (entry.getValue() == maxVotos) {
-                empate = true; // alguien tiene los mismos votos que el líder
-            }
-        }
-        
-        mostrandoResultados = true; // cambiamos la pantalla para mostrar la cinemática de expulsión
-        letrasMostradas = 0; // resetear el contador de letras para la máquina de escribir
+    public void mostrarResultadosVotacion(String mensaje, Jugador expulsado) {
+        mensajeResultado = mensaje;
+        jugadorExpulsado = expulsado;
+        mostrandoResultados = true;
+        letrasMostradas = 0;
         ticksParaLetra = 0;
         
-        // reproducir el sonido 3 veces en total (1 vez original + 2 repeticiones)
         ReproductorMusica.reproducirEfectoRepetido("expulcion music.wav", 2);
-        
-        // --- lógica de expulsión y reporte de impostores restantes ---
-        // si los votos por "skip" ganan, hay empate, o nadie votó
-        if (votosSkip >= maxVotos || empate || masVotado == null) {
-            mensajeResultado = "NADIE FUE EXPULSADO"; // sin símbolos extra para evitar errores de fuente
-            jugadorExpulsado = null;
-        } else {
-            // expulsamos al más votado (lo inhabilitamos/matamos)
-            masVotado.setVivo(false);
-            jugadorExpulsado = masVotado;
-            
-            // requerimiento: contar cuántos impostores quedan vivos
-            int impostoresRestantes = 0;
-            for (Jugador j : jugadores) {
-                if (j.isVivo() && j.isImpostor()) {
-                    impostoresRestantes++;
-                }
-            }
-            
-            // construimos el mensaje detallado sin acentos
-            if (masVotado.isImpostor()) {
-                mensajeResultado = masVotado.getNombre() + " ERA UN IMPOSTOR. QUEDAN " + impostoresRestantes + " IMPOSTORES";
-            } else {
-                mensajeResultado = masVotado.getNombre() + " NO ERA UN IMPOSTOR. QUEDAN " + impostoresRestantes + " IMPOSTORES";
-            }
-        }
     }
 
     /**
@@ -370,17 +298,17 @@ public class PantallaVotacion {
 
             // animar al jugador expulsado
             if (jugadorExpulsado != null) {
-                // frames del 1 al 6
-                int frame = 1 + (300 - temporizadorResultados) / 50; // cambia de frame cada 50 ticks
-                if (frame > 6) frame = 6;
-                if (frame < 1) frame = 1;
+                int ticksAnim = 600 - temporizadorResultados;
+                
+                // frames del 1 al 6 (rotación infinita mientras dure la animación)
+                int frame = 1 + ((ticksAnim / 15) % 6);
                 
                 String spritePath = "sprites/expulción/mainscreenCrew" + frame + ".png";
                 BufferedImage spriteColoreado = PanelJuego.obtenerSpriteColoreado(spritePath, jugadorExpulsado.getColor(), "expulsion_" + frame);
                 
                 if (spriteColoreado != null) {
                     // animarlo flotando de izquierda a derecha y rotando
-                    int xAnim = (int) ((100 + (300 - temporizadorResultados) * 2) * ((double) anchoPanel / 800));
+                    int xAnim = (int) ((-150 + ticksAnim * 3) * ((double) anchoPanel / 800));
                     int yAnim = altoPanel / 2 - 75; // centrado en el eje y aproximado
                     g2.drawImage(spriteColoreado, xAnim, yAnim, 150, 150, null);
                 }

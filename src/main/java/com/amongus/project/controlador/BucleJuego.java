@@ -102,11 +102,11 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 for (Jugador j : estado.getJugadores()) {
                     if (j.getNombre().equals(votante)) {
                         if (votado.equals("SKIP")) {
-                            j.votarSkip();
+                            j.recibirVotoRemotoSkip();
                         } else {
                             for (Jugador obj : estado.getJugadores()) {
                                 if (obj.getNombre().equals(votado)) {
-                                    j.votarJugador(obj);
+                                    j.recibirVotoRemotoJugador(obj);
                                     break;
                                 }
                             }
@@ -115,6 +115,27 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                     }
                 }
             } catch (Exception e) {}
+        } else if (mensaje.startsWith("RESULTADO_VOTACION:")) {
+            try {
+                String[] partes = mensaje.split(":", 3);
+                String expulsado = partes[1];
+                String msjResultado = partes[2];
+                if (panelJuego.getPantallaVotacion() != null) {
+                    Jugador jExpulsado = null;
+                    if (!expulsado.equals("NADIE")) {
+                        for (Jugador j : estado.getJugadores()) {
+                            if (j.getNombre().equals(expulsado)) {
+                                jExpulsado = j;
+                                j.setVivo(false);
+                                break;
+                            }
+                        }
+                    }
+                    panelJuego.getPantallaVotacion().mostrarResultadosVotacion(msjResultado, jExpulsado);
+                }
+            } catch (Exception e) {
+                System.err.println("Error procesando RESULTADO_VOTACION: " + mensaje);
+            }
         } else if (mensaje.startsWith("TAREA_LISTA:")) {
             tripulantesConTareasListas++;
             int total = 0;

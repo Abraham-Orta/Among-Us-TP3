@@ -75,13 +75,23 @@ public class Jugador extends Personaje {
     }
 
     public void votarSkip() {
+        if (haVotado) return;
         haVotado = true; votoSkip = true; votoJugador = null;
         if (clienteRed != null) clienteRed.enviarMensaje("VOTO:" + nombre + ",SKIP");
     }
 
     public void votarJugador(Jugador objetivo) {
+        if (haVotado) return;
         haVotado = true; votoSkip = false; votoJugador = objetivo;
         if (clienteRed != null) clienteRed.enviarMensaje("VOTO:" + nombre + "," + objetivo.getNombre());
+    }
+
+    public void recibirVotoRemotoSkip() {
+        haVotado = true; votoSkip = true; votoJugador = null;
+    }
+
+    public void recibirVotoRemotoJugador(Jugador objetivo) {
+        haVotado = true; votoSkip = false; votoJugador = objetivo;
     }
 
     public boolean yaVoto()         { return haVotado; }
