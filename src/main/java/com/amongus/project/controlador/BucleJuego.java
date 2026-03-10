@@ -87,6 +87,11 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             }
         } else if (mensaje.startsWith("ANIMACION_MATAR:")) {
             // ya no se usa, la animación se procesa con matar
+        } else if (mensaje.startsWith("CHAT:")) {
+            // Reenviamos el chat a la pantalla de votación (si existe)
+            if (estado.getFaseActual() == EstadoJuego.Fase.VOTACION && panelJuego.getPantallaVotacion() != null) {
+                panelJuego.getPantallaVotacion().recibirMensajeChat(mensaje.substring(5));
+            }
         } else if (mensaje.startsWith("REPORTAR:")) {
             estado.setFaseActual(EstadoJuego.Fase.VOTACION);
             if (panelJuego.getPantallaVotacion() != null)
@@ -186,6 +191,16 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
 
         if (fase == EstadoJuego.Fase.VOTACION) {
             panelJuego.getPantallaVotacion().actualizar();
+
+            // Disparar mensaje de chat si aplico enter
+            ManejadorEntrada m = panelJuego.getManejadorEntrada();
+            if (m.presionoEnterChat) {
+                m.presionoEnterChat = false;
+                if (clienteRed != null) {
+                    clienteRed.enviarMensaje("CHAT:" + m.entradaChat.toString());
+                }
+                m.entradaChat.setLength(0); // limpiar
+            }
 
         } else if (fase == EstadoJuego.Fase.JUGANDO) {
 

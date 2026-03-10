@@ -39,6 +39,11 @@ public class ManejadorEntrada extends KeyAdapter {
     public int     mouseY         = 0;
     public boolean clickIzquierdo = false;
 
+    // --- CHAT ---
+    public boolean escribiendoChat = false;
+    public StringBuilder entradaChat = new StringBuilder();
+    public boolean presionoEnterChat = false; // flag para disparar el mensaje
+
     // --- ESTADO DE JUEGO (instancia por cliente) ---
     private EstadoJuego estadoJuego;
 
@@ -82,11 +87,42 @@ public class ManejadorEntrada extends KeyAdapter {
     }
 
     // ---------------------------------------------------------------
-    //  TECLADO — PRESIONAR
+    //  TECLADO — PRESIONAR Y ESCRIBIR
     // ---------------------------------------------------------------
+    @Override
+    public void keyTyped(KeyEvent e) {
+        if (escribiendoChat) {
+            char t = e.getKeyChar();
+            // Evitar agregar los caracteres de control a la cadena
+            if (t != KeyEvent.VK_ENTER && t != KeyEvent.VK_BACK_SPACE && t != KeyEvent.VK_ESCAPE && t >= 32) {
+                // limitar longitud
+                if (entradaChat.length() < 100) {
+                    entradaChat.append(t);
+                }
+            }
+        }
+    }
+
     @Override
     public void keyPressed(KeyEvent e) {
         int c = e.getKeyCode();
+
+        if (escribiendoChat) {
+            if (c == KeyEvent.VK_ESCAPE) {
+                escribiendoChat = false;
+                entradaChat.setLength(0);
+            } else if (c == KeyEvent.VK_BACK_SPACE) {
+                if (entradaChat.length() > 0) {
+                    entradaChat.deleteCharAt(entradaChat.length() - 1);
+                }
+            } else if (c == KeyEvent.VK_ENTER) {
+                if (entradaChat.length() > 0) {
+                    presionoEnterChat = true;
+                }
+                // Se mantiene escribiendoChat en true para seguir leyendo el chat
+            }
+            return; // Bloquea el movimiento u otras teclas mientras escribe
+        }
 
         // Movimiento
         if (c == KeyEvent.VK_W || c == KeyEvent.VK_UP)    arriba    = true;

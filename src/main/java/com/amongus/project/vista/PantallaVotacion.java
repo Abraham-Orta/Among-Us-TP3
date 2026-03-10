@@ -51,6 +51,11 @@ public class PantallaVotacion {
     private int ultimoAnchoPanel = 800;
     private int ultimoAltoPanel = 600;
 
+    // --- chat ---
+    private List<String> historialChat = new ArrayList<>();
+    private Rectangle areaBotonChat = new Rectangle(20, 20, 60, 60);
+    private boolean chatAbierto = false;
+
     // caché de la fuente del juego
     private static Font fuenteBase;
 
@@ -140,6 +145,23 @@ public class PantallaVotacion {
         jugadorExpulsado = null;
         letrasMostradas = 0;
         ticksParaLetra = 0;
+        chatAbierto = false;
+        historialChat.clear();
+        if (manejadorEntrada != null) {
+            manejadorEntrada.escribiendoChat = false;
+            manejadorEntrada.entradaChat.setLength(0);
+        }
+    }
+
+    /**
+     * recibe un mensaje de chat y lo agrega al historial
+     */
+    public void recibirMensajeChat(String msj) {
+        historialChat.add(msj);
+        // mantener un limite de mensajes para no sobrecargar
+        if (historialChat.size() > 15) {
+            historialChat.remove(0);
+        }
     }
 
     /**
@@ -190,12 +212,35 @@ public class PantallaVotacion {
 
         // 4. leer el voto del jugador real (tú)
         Jugador jugadorLocal = estadoJuego.getJugadorLocal();
-        if (jugadorLocal == null || !jugadorLocal.isVivo() || jugadorLocal.yaVoto()) {
-            return; // si estás muerto o ya votaste, no puedes hacer clic
+        if (jugadorLocal == null || !jugadorLocal.isVivo()) {
+            return; // si estás muerto no puedes hacer clic en votación
         }
 
         // verificar clic izquierdo del ratón (usando la instancia del manejador, no static)
         if (manejadorEntrada.clickIzquierdo) {
+            
+            // si hizo clic en el icono del chat
+            if (areaBotonChat.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY)) {
+                ReproductorMusica.reproducirEfecto("UI_boton.wav");
+                chatAbierto = !chatAbierto;
+                manejadorEntrada.escribiendoChat = chatAbierto; // toggle
+                manejadorEntrada.clickIzquierdo = false;
+                return;
+            }
+
+            // Sync por si cerró el chat presionando ESCAPE
+            if (chatAbierto && !manejadorEntrada.escribiendoChat) {
+                chatAbierto = false;
+            }
+
+            // bloquear clicks de votación si el chat está abierto
+            if (chatAbierto) {
+                manejadorEntrada.clickIzquierdo = false; // ignorar clics detrás del chat
+                return;
+            }
+
+            // si ya había votado antes, no dejamos votar de nuevo
+            if (jugadorLocal.yaVoto()) return;
             
             // si hizo clic en el botón de skip
             if (botonSkip.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY)) {
@@ -462,6 +507,102 @@ public class PantallaVotacion {
             g2.drawString(msjStatus, txtX, txtY);
         }
         
+        // --- CHAT INTERFAZ ---
+        dibujarInterfazChat(g2, anchoPanel, altoPanel);
+        
         g2.dispose();
+    }
+
+    private void dibujarInterfazChat(Graphics2D g2, int anchoPanel, int altoPanel) {
+        // Area del chat box general (arriba a la izquierda)
+        int chatX = 20;
+        int chatY = 20;
+        int chatW = 300;
+        
+        // El boton de chat para toggler la ventana
+        areaBotonChat.x = chatX;
+        areaBotonChat.y = chatY;
+        
+        boolean hoverChatBtn = areaBotonChat.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY);
+        Color chatBtnBg = hoverChatBtn ? new Color(60, 60, 60, 200) : new Color(30, 30, 30, 200);
+        dibujarBotonEstiloAmongUs(g2, areaBotonChat, chatBtnBg, Color.WHITE);
+        
+        // icono de chat aproximado
+        g2.setColor(Color.WHITE);
+        g2.fillRoundRect(chatX + 15, chatY + 15, 30, 20, 10, 10);
+        int[] px = {chatX + 20, chatX + 25, chatX + 30};
+        int[] py = {chatY + 30, chatY + 45, chatY + 30};
+        g2.fillPolygon(px, py, 3);
+        
+        // --- Si no está abierto, no dibujar el resto ---
+        if (!chatAbierto) {
+            return;
+        }
+        
+        int boxHeight = 250;
+        
+        // Dibujamos el historial abajo del botón
+        int histY = chatY + 70;
+        
+        // fondo del historial
+        g2.setColor(new Color(0, 0, 0, 150));
+        g2.fillRoundRect(chatX, histY, chatW, boxHeight, 15, 15);
+        
+        // Dibujar mensajes pasados
+        g2.setFont(cargarFuente(28f));
+        int msgY = histY + 25;
+        Jugador local = estadoJuego.getJugadorLocal();
+        boolean localIsImp = local != null && local.isImpostor();
+        
+        for (String msj : historialChat) {
+            String autor = "";
+            String contenido = msj;
+            if (msj.contains(":")) {
+                int splitIdx = msj.indexOf(':');
+                autor = msj.substring(0, splitIdx).trim();
+                contenido = msj.substring(splitIdx + 1).trim();
+                if (contenido.startsWith("CHAT:")) {
+                    contenido = contenido.substring(5).trim();
+                }
+            } else {
+                autor = "Sistema";
+            }
+            
+            // Comprobar si al autor se lo reconoce como impostor
+            boolean msgIsImp = false;
+            for (Jugador j : estadoJuego.getJugadores()) {
+                if (j.getNombre().equals(autor) && j.isImpostor()) {
+                    msgIsImp = true; break;
+                }
+            }
+
+            if (msgIsImp && localIsImp) g2.setColor(Color.RED);
+            else g2.setColor(Color.CYAN);
+            
+            g2.drawString(autor + ":", chatX + 10, msgY);
+            
+            g2.setColor(Color.WHITE);
+            g2.drawString(contenido, chatX + 15 + g2.getFontMetrics().stringWidth(autor + ":"), msgY);
+            msgY += 24; // Espaciado entre mensajes más grande por el tamaño de fuente
+        }
+
+        // Mostrar recuadro de texto de escritura si está activo
+        if (manejadorEntrada.escribiendoChat) {
+            int inputY = histY + boxHeight + 10;
+            g2.setColor(new Color(0, 0, 0, 200));
+            g2.fillRoundRect(chatX, inputY, chatW, 40, 10, 10);
+            g2.setColor(Color.WHITE);
+            g2.drawRoundRect(chatX, inputY, chatW, 40, 10, 10);
+            
+            g2.setFont(cargarFuente(22f));
+            String txt = manejadorEntrada.entradaChat.toString();
+            // Cursor parpadeante
+            if ((System.currentTimeMillis() / 500) % 2 == 0) txt += "|";
+            g2.drawString(txt, chatX + 10, inputY + 25);
+            
+            g2.setColor(Color.GRAY);
+            g2.setFont(cargarFuente(14f));
+            g2.drawString("PRESIONA ENTER PARA ENVIAR O ESC PARA CANCELAR", chatX, inputY + 55);
+        }
     }
 }
