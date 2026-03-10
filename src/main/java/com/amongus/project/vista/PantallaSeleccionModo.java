@@ -9,6 +9,7 @@ import javax.imageio.ImageIO; // Para leer imágenes (JPG, PNG, etc.)
 import com.amongus.project.controlador.BucleJuego; // Logica del bucle de juego
 import com.amongus.project.vista.PanelJuego; // Panel donde se dibuja el juego
 import com.amongus.project.red.Cliente; // Cliente de red
+import java.io.IOException;
 
 /**
  * PantallaSeleccionModo
@@ -527,7 +528,12 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         
         // Abre la ventana de lobby
         SwingUtilities.invokeLater(() -> {
-            PantallaLobby lobby = new PantallaLobby(nombre, esHost, cliente);
+            PantallaLobby lobby = null;
+            try {
+                lobby = new PantallaLobby(nombre, esHost, cliente);
+            } catch (IOException ex) {
+                System.getLogger(PantallaSeleccionModo.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            }
             lobby.setVisible(true);
             
             if (cliente != null && mensajeInicial != null) {

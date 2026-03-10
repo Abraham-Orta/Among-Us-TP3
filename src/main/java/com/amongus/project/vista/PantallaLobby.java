@@ -12,6 +12,7 @@ import com.amongus.project.controlador.BucleJuego;
 import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
 import com.amongus.project.red.Cliente;
+import java.io.IOException;
 
 public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
 
@@ -26,7 +27,7 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private String codigoSala;
 
     private JComboBox<String> selectorMapa;
-    private final String[] MAPAS_DISPONIBLES = {"mapa1.png", "mapa2.png"};
+   private final String[] MAPAS_DISPONIBLES = {"mapa1.tmj", "mapa2.tmj"};
 
     private boolean soyImpostor = false; // Rol asignado por el servidor
 
@@ -36,7 +37,7 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     // Caché del icono de jugador — se carga una sola vez
     private ImageIcon iconoJugadorCache;
 
-    public PantallaLobby(String nombreJugador, boolean esHost, Cliente cliente) {
+    public PantallaLobby(String nombreJugador, boolean esHost, Cliente cliente) throws IOException {
         this.nombreJugador       = nombreJugador;
         this.esHost              = esHost;
         this.cliente             = cliente;
@@ -313,7 +314,12 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             if (mensaje.contains(":")) mapaElegido = mensaje.split(":")[1];
 
             // Inicializar el mapa en el EstadoJuego propio de este cliente
-            com.amongus.project.modelo.Mapa mapa = new com.amongus.project.modelo.Mapa(mapaElegido);
+            com.amongus.project.modelo.Mapa mapa = null;
+            try {
+                mapa = new com.amongus.project.modelo.Mapa(mapaElegido);
+            } catch (IOException ex) {
+                System.getLogger(PantallaLobby.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+            }
             estadoJuego.setMapa(mapa);
 
             // Paleta de colores para todos los jugadores

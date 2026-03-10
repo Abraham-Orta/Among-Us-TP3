@@ -1,5 +1,6 @@
 package com.amongus.project.modelo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,10 +25,10 @@ public class EstadoJuego {
     // SABOTAJES
     private boolean lucesSaboteadas = false;
 
-    public EstadoJuego() {
+    public EstadoJuego() throws IOException {
         jugadores = new ArrayList<>();
         faseActual = Fase.MENU;
-        mapa = new Mapa("mapa1.png");
+        mapa = new Mapa("mapa1.tmj");
     }
     
     // Getters y Setters para sabotajes

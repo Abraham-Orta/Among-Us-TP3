@@ -31,46 +31,85 @@ public class Mapa {
     private Image imagenFondo;
 
     /**
-     * @param nombreArchivoFondo nombre del archivo de imagen dentro de la carpeta "mapa/",
+     * @param nombreArchivoTmj nombre del archivo de imagen dentro de la carpeta "mapa/",
      *                            p.ej. "mapa1.png"
      */
-    public Mapa(String nombreArchivoFondo) {
+    public Mapa(String nombreArchivoTmj) throws IOException {
         this.ancho         = 2880;
         this.alto          = 1920;
         this.obstaculos    = new ArrayList<>();
         this.alcantarillas = new ArrayList<>();
-        cargarImagenFondo(nombreArchivoFondo);
+        cargarImagenFondo(nombreArchivoTmj);
         crearMapaPrueba();
+        
+        cargarImagenFondo(nombreArchivoTmj);
+        
+        crearMapaPrueba();
+        
+       CargadorNivel cargador = new CargadorNivel("src/main/resources/" + nombreArchivoTmj);
+      
+        for (java.awt.geom.Rectangle2D.Double rectDouble : cargador.getColisiones()) {
+            Rectangle rectNormal = new Rectangle(
+                (int) rectDouble.x, 
+                (int) rectDouble.y, 
+                (int) rectDouble.width, 
+                (int) rectDouble.height
+            );
+            this.obstaculos.add(rectNormal);
+        }
+        for (java.awt.geom.Rectangle2D.Double rectDouble : cargador.getAlcantarillas()) {
+            Rectangle rectNormal = new Rectangle(
+                (int) rectDouble.x, 
+                (int) rectDouble.y, 
+                (int) rectDouble.width, 
+                (int) rectDouble.height
+            );
+            this.alcantarillas.add(rectNormal);
+        }
+      
     }
-
-    private void cargarImagenFondo(String nombreArchivoFondo) {
-        // Verificar caché primero
-        if (cacheImagenes.containsKey(nombreArchivoFondo)) {
-            imagenFondo = cacheImagenes.get(nombreArchivoFondo);
+    
+      
+    private void cargarImagenFondo(String nombreArchivoTmj) throws IOException {
+        
+        String nombreImagen = nombreArchivoTmj.replace(".tmj", ".png");
+        
+        if (cacheImagenes.containsKey(nombreImagen)) {
+            imagenFondo = cacheImagenes.get(nombreImagen);
             return;
         }
-
+            
+       
         try {
-            File f = new File("mapa/" + nombreArchivoFondo);
+            File archivoImagen = new File("mapa/" + nombreImagen);
+        
+            if (archivoImagen.exists()) {
+                imagenFondo = javax.imageio.ImageIO.read(archivoImagen);
+                cacheImagenes.put(nombreImagen, imagenFondo);
+            } else {
+                System.out.println("¡Aviso! No se encontró la imagen en: " + archivoImagen.getAbsolutePath());
+            }
+        } catch (java.io.IOException e) {
+            System.out.println("Error al cargar la imagen del mapa: " + e.getMessage());
+        }
+        
+            File f = new File("mapa/" + nombreArchivoTmj);
             if (f.exists()) {
                 imagenFondo = ImageIO.read(f);
             } else {
-                java.net.URL u = getClass().getClassLoader().getResource(nombreArchivoFondo);
+                java.net.URL u = getClass().getClassLoader().getResource(nombreArchivoTmj);
                 if (u != null) {
                     imagenFondo = ImageIO.read(u);
                 } else {
-                    System.err.println("No se encontró el archivo del mapa: " + nombreArchivoFondo);
+                    System.err.println("No se encontró el archivo del mapa: " + nombreArchivoTmj);
                 }
             }
             // Guardar en caché para reutilización
             if (imagenFondo != null) {
-                cacheImagenes.put(nombreArchivoFondo, imagenFondo);
+                cacheImagenes.put(nombreArchivoTmj, imagenFondo);
             }
-        } catch (IOException e) {
-            System.err.println("Error al cargar la imagen del mapa: " + e.getMessage());
-        }
+             
     }
-
     private void crearMapaPrueba() {
         // --- Bordes ---
         obstaculos.add(new Rectangle(0,          0,         ancho, 20));
@@ -78,16 +117,13 @@ public class Mapa {
         obstaculos.add(new Rectangle(0,          0,         20,    alto));
         obstaculos.add(new Rectangle(ancho - 20, 0,         20,    alto));
 
-        // --- Obstáculos internos de prueba ---
-        obstaculos.add(new Rectangle(200, 200, 100, 100));
-        obstaculos.add(new Rectangle(500, 100,  50, 300));
-        obstaculos.add(new Rectangle(100, 450, 200,  50));
+       
 
         // --- Vías de acceso rápido (alcantarillas) ---
-        alcantarillas.add(new Rectangle( 300, 300, 60, 60));  // Sala A
-        alcantarillas.add(new Rectangle( 800, 300, 60, 60));  // Sala B
-        alcantarillas.add(new Rectangle( 500, 800, 60, 60));  // Sala C
-        alcantarillas.add(new Rectangle(1200, 800, 60, 60));  // Sala D
+       // alcantarillas.add(new Rectangle( 300, 300, 60, 60));  // Sala A
+        //alcantarillas.add(new Rectangle( 800, 300, 60, 60));  // Sala B
+        //alcantarillas.add(new Rectangle( 500, 800, 60, 60));  // Sala C
+        //alcantarillas.add(new Rectangle(1200, 800, 60, 60));  // Sala D
     }
 
     /**
