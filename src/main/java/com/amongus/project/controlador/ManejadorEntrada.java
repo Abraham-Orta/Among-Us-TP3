@@ -95,8 +95,8 @@ public class ManejadorEntrada extends KeyAdapter {
             char t = e.getKeyChar();
             // Evitar agregar los caracteres de control a la cadena
             if (t != KeyEvent.VK_ENTER && t != KeyEvent.VK_BACK_SPACE && t != KeyEvent.VK_ESCAPE && t >= 32) {
-                // limitar longitud
-                if (entradaChat.length() < 100) {
+                // LÍMITE ACTUALIZADO: 46 caracteres
+                if (entradaChat.length() < 46) {
                     entradaChat.append(t);
                 }
             }

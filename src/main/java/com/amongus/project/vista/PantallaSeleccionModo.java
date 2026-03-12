@@ -6,6 +6,7 @@ import java.awt.*; // Componentes AWT (Color, Font, Graphics, etc.)
 import java.io.File; // Para manejo de archivos del sistema
 import java.io.InputStream; // Para leer flujos de datos
 import javax.imageio.ImageIO; // Para leer imágenes (JPG, PNG, etc.)
+import java.awt.image.BufferedImage; // Para el procesamiento de imágenes redondeadas
 import com.amongus.project.controlador.BucleJuego; // Logica del bucle de juego
 import com.amongus.project.vista.PanelJuego; // Panel donde se dibuja el juego
 import com.amongus.project.red.Cliente; // Cliente de red
@@ -97,8 +98,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panelUnirse.setOpaque(false); // Transparente
         panelUnirse.setLayout(new BoxLayout(panelUnirse, BoxLayout.Y_AXIS)); // Disposición vertical
 
-        // Imagen Unirse (Reducida)
-        JLabel imgUnirse = crearEtiquetaImagen("imagenEnLinea.png", 240, 160);
+        // Imagen Unirse (Reducida) - Ahora usa la imagen específica para diferenciar modos
+        JLabel imgUnirse = crearEtiquetaImagen("UnirseApartida.png", 240, 160);
         imgUnirse.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         // Botón Unirse
@@ -153,36 +154,57 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
     // Metodos auxiliares
 
     /**
-     * Carga imagen desde recursos
+     * Carga imagen desde recursos, la escala y le redondea las esquinas con un borde blanco.
      */
     private JLabel crearEtiquetaImagen(String nombre, int w, int h) {
         JLabel lbl = new JLabel(); // Crea etiqueta vacía
         try {
-            Image img = null; // Variable para almacenar imagen
+            Image imgRaw = null; // Variable para almacenar imagen original
             // Classpath (recursos dentro del JAR)
-            java.net.URL url = getClass().getClassLoader().getResource(nombre); // Busca recurso
-            if (url != null) img = ImageIO.read(url); // Lee imagen desde URL
+            java.net.URL url = getClass().getClassLoader().getResource(nombre);
+            if (url != null) imgRaw = ImageIO.read(url);
             else {
-                //  Rutas físicas (para desarrollo)
-                String[] rutas = {"src/main/resources/" + nombre, "resources/" + nombre, nombre}; // Posibles rutas
+                // Rutas físicas (para desarrollo)
+                String[] rutas = {"src/main/resources/" + nombre, "resources/" + nombre, nombre};
                 for (String r : rutas) {
-                    File f = new File(r); // Crea objeto File
-                    if (f.exists()) { // Si el archivo existe
-                        img = ImageIO.read(f); // Lee imagen desde archivo
-                        break; // Sale del bucle
+                    File f = new File(r);
+                    if (f.exists()) {
+                        imgRaw = ImageIO.read(f);
+                        break;
                     }
                 }
             }
-            // Si cargó, redimensionar y asignar
-            if (img != null) {
-                img = img.getScaledInstance(w, h, Image.SCALE_SMOOTH); // Redimensiona imagen
-                lbl.setIcon(new ImageIcon(img)); // Establece imagen como icono de la etiqueta
+
+            if (imgRaw != null) {
+                // 1. Redimensionar imagen para que encaje en el tamaño deseado
+                Image imgEscalada = imgRaw.getScaledInstance(w, h, Image.SCALE_SMOOTH);
+                
+                // 2. Crear un BufferedImage con transparencia para el procesamiento
+                BufferedImage bi = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+                Graphics2D g2 = bi.createGraphics();
+                
+                // Calidad máxima de renderizado
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+                
+                // 3. Aplicar el recorte redondeado (Clip) para que las esquinas no sean cuadradas
+                g2.setClip(new java.awt.geom.RoundRectangle2D.Double(0, 0, w, h, 40, 40));
+                g2.drawImage(imgEscalada, 0, 0, null);
+                
+                // 4. Dibujar un borde blanco sutil que haga juego con los botones
+                g2.setClip(null); // Quitar el recorte para dibujar el borde exterior
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(4));
+                g2.drawRoundRect(2, 2, w - 4, h - 4, 40, 40);
+                
+                g2.dispose();
+                lbl.setIcon(new ImageIcon(bi));
             } else {
-                lbl.setText("NO IMAGEN"); // Texto alternativo
-                lbl.setForeground(Color.RED); // Color rojo para el texto
+                lbl.setText("NO IMAGEN (" + nombre + ")"); // Texto alternativo con nombre para depurar
+                lbl.setForeground(Color.RED);
             }
-        } catch (Exception e) { System.err.println("Error img: " + e.getMessage()); } // Manejo de error
-        return lbl; // Retorna la etiqueta
+        } catch (Exception e) { System.err.println("Error procesando imagen: " + e.getMessage()); }
+        return lbl;
     }
 
     /**
@@ -249,8 +271,8 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
                     g.setColor(Color.DARK_GRAY); // Color de respaldo
                     g.fillRect(0,0,getWidth(),getHeight()); // Rellena con color
                 }
-                // Velo oscuro semitransparente
-                g.setColor(new Color(0,0,0,100)); // Negro con transparencia (100/255)
+                // Velo oscuro semitransparente (Oscurecido al 65% para resaltar las tarjetas)
+                g.setColor(new Color(0,0,0,165)); 
                 g.fillRect(0,0,getWidth(),getHeight()); // Rellena panel con velo
             }
         };
@@ -460,21 +482,21 @@ public class PantallaSeleccionModo extends JFrame { // Hereda de JFrame = ventan
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
-        // Etiqueta del Mensaje
-        JLabel label = new JLabel("<html><center>" + mensaje + "</center></html>", SwingConstants.CENTER);
-        label.setFont(cargarFuente(24f)); // Fuente del juego
+        // Etiqueta del Mensaje - AHORA CON FUENTE PERSONALIZADA (Sin HTML para asegurar que aplique la fuente)
+        JLabel label = new JLabel(mensaje, SwingConstants.CENTER);
+        label.setFont(cargarFuente(32f)); // Aumentamos un poco el tamaño para mayor impacto
         label.setForeground(Color.WHITE);
         label.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        // Campo de Texto
+        // Campo de Texto - MEJORADO PARA VISIBILIDAD
         JTextField campoTexto = new JTextField();
-        campoTexto.setFont(new Font("Arial", Font.BOLD, 20)); // Arial para que sea legible al escribir
+        campoTexto.setFont(new Font("Arial", Font.BOLD, 20)); // Arial para legibilidad al escribir
         campoTexto.setForeground(Color.WHITE);
-        campoTexto.setBackground(new Color(10, 10, 10));
+        campoTexto.setBackground(new Color(35, 35, 35)); // Gris oscuro para resaltar del fondo negro
         campoTexto.setCaretColor(Color.WHITE);
         campoTexto.setHorizontalAlignment(JTextField.CENTER);
         campoTexto.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Color.GRAY, 2),
+                BorderFactory.createLineBorder(Color.WHITE, 2), // Borde blanco sutil
                 BorderFactory.createEmptyBorder(5, 10, 5, 10)
         ));
         campoTexto.setMaximumSize(new Dimension(400, 50));

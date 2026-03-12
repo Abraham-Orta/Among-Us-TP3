@@ -28,6 +28,7 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
             // Usamos la IP que nos pasaron (puede ser "localhost" o "192.168.1.5")
             System.out.println("Cliente: Intentando conectar a " + direccionIP + "...");
             socket = new Socket(direccionIP, 1234);
+            socket.setTcpNoDelay(true); // OPTIMIZACIÓN: Enviar datos inmediatamente sin demora
             
             // Preparamos los canales para hablar y escuchar
             entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
@@ -66,7 +67,7 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
             // Bucle infinito mientras llegue data
             while ((mensajeRecibido = entrada.readLine()) != null) {
                 
-                System.out.println("SERVIDOR DIJO: " + mensajeRecibido);
+                // System.out.println("SERVIDOR DIJO: " + mensajeRecibido); // OPTIMIZACIÓN: Comentado para eliminar lag
                 
                 // Notificar al listener si existe
                 if (listener != null) {

@@ -16,13 +16,16 @@ public class EstadoJuego {
     private List<Jugador> jugadores;
     private Jugador jugadorLocal;
     
-    // Estados del juego
-    public enum Fase { MENU, LOBBY, JUGANDO, VOTACION, FINALIZADO }
+    // estados del juego: añadimos revelacion para la pantalla inicial de roles
+    public enum Fase { MENU, LOBBY, REVELACION, JUGANDO, VOTACION, FINALIZADO }
     private Fase faseActual;
     private Mapa mapa;
     
     // SABOTAJES
     private boolean lucesSaboteadas = false;
+
+    // GANADOR DE LA PARTIDA (Se asigna al finalizar)
+    private String mensajeGanador = "";
 
     public EstadoJuego() {
         jugadores = new ArrayList<>();
@@ -69,4 +72,7 @@ public class EstadoJuego {
     }    
     public Mapa getMapa() { return mapa; }
     public void setMapa(Mapa mapa) { this.mapa = mapa; }
+    
+    public String getMensajeGanador() { return mensajeGanador; }
+    public void setMensajeGanador(String mensajeGanador) { this.mensajeGanador = mensajeGanador; }
 }

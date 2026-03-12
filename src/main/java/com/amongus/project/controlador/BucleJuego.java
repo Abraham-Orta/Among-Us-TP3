@@ -19,6 +19,8 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private Cliente     clienteRed;
 
     private int tripulantesConTareasListas = 0;
+    private int framesRevelacion = 0; // contador para la pantalla inicial
+    private boolean finalizando = false; // Flag para evitar múltiples llamadas al terminar el juego
 
     private final int  FPS            = 60;
     private final long TIEMPO_OBJETIVO = 1_000_000_000L / FPS;
@@ -49,6 +51,13 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 String nombre = p[0];
                 int nx = Integer.parseInt(p[1]);
                 int ny = Integer.parseInt(p[2]);
+
+                // ¡SOLUCIÓN! Si el mensaje de movimiento es sobre MÍ MISMO, lo ignoro.
+                // Yo ya sé dónde estoy porque manejo mi propio teclado.
+                if (estado.getJugadorLocal() != null && nombre.equals(estado.getJugadorLocal().getNombre())) {
+                    return; 
+                }
+
                 for (Jugador j : estado.getJugadores()) {
                     if (j.getNombre().equals(nombre)) { j.recibirPosicionRed(nx, ny); break; }
                 }
@@ -60,6 +69,10 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 String[] p = mensaje.substring(6).split(",");
                 String atacante = p[0];
                 String victima = p[1];
+                
+                // SINCRONIZACIÓN DE CADÁVER: Extraemos coordenadas X,Y si vienen en el mensaje
+                int bodyX = p.length >= 4 ? Integer.parseInt(p[2]) : -1;
+                int bodyY = p.length >= 4 ? Integer.parseInt(p[3]) : -1;
                 
                 // verificamos si el jugador de esta ventana es el atacante o la victima
                 Jugador local = estado.getJugadorLocal();
@@ -79,7 +92,14 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 }
 
                 for (Jugador j : estado.getJugadores()) {
-                    if (j.getNombre().equals(victima)) { j.setVivo(false); }
+                    if (j.getNombre().equals(victima)) { 
+                        j.setVivo(false); 
+                        // FIJAMOS EL CUERPO: Si el mensaje traía posición, la aplicamos para que todos lo vean igual
+                        if (bodyX != -1) {
+                            j.setXMuerte(bodyX);
+                            j.setYMuerte(bodyY);
+                        }
+                    }
                     if (j.getNombre().equals(atacante)) { j.iniciarAnimacionAtaque(); }
                 }
             } catch (Exception e) {
@@ -131,9 +151,15 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                         for (Jugador j : estado.getJugadores()) {
                             if (j.getNombre().equals(expulsado)) {
                                 jExpulsado = j;
-                                j.setVivo(false);
+                                j.setVivo(false, true); // true = fue expulsado
                                 break;
                             }
+                        }
+                        // También verificar si el local fue el expulsado
+                        Jugador loc = estado.getJugadorLocal();
+                        if (loc != null && loc.getNombre().equals(expulsado)) {
+                            jExpulsado = loc;
+                            loc.setVivo(false, true);
                         }
                     }
                     panelJuego.getPantallaVotacion().mostrarResultadosVotacion(msjResultado, jExpulsado);
@@ -150,17 +176,45 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                         && !estado.getJugadorLocal().isImpostor())
                     clienteRed.enviarMensaje("COMANDO:GANAR_TRIPULANTES");
             }
+        } else if (mensaje.startsWith("REVELAR_IMPOSTORES:")) {
+            String listaStr = mensaje.substring(19);
+            if (!listaStr.isEmpty()) {
+                String[] impostores = listaStr.split(",");
+                for (String imp : impostores) {
+                    for (Jugador j : estado.getJugadores()) {
+                        if (j.getNombre().equals(imp.trim())) {
+                            j.setImpostor(true);
+                        }
+                    }
+                    if (estado.getJugadorLocal() != null && estado.getJugadorLocal().getNombre().equals(imp.trim())) {
+                        estado.getJugadorLocal().setImpostor(true);
+                    }
+                }
+            }
         } else if (mensaje.startsWith("FIN:")) {
-            finalizarJuego("¡Ganan los " + mensaje.substring(4) + "!");
+            finalizarJuego("Ganan los " + mensaje.substring(4));
         } else if (mensaje.equals("SABOTAJE:LUCES:ON")) {
             estado.setLucesSaboteadas(true);
-        } else if (mensaje.equals("SABOTAJE:LUCES:OFF")) {
+        } else if (mensaje.startsWith("SABOTAJE:LUCES:OFF")) {
             estado.setLucesSaboteadas(false);
+        } else if (mensaje.startsWith("SOMBRERO:")) {
+            try {
+                String[] p = mensaje.split(":");
+                String nombre = p[1];
+                String idSom = p[2];
+                for (Jugador j : estado.getJugadores()) {
+                    if (j.getNombre().equals(nombre)) {
+                        j.setSombrero(idSom);
+                        break;
+                    }
+                }
+            } catch (Exception e) {}
         }
-    }
+        }
 
     public void iniciar() {
         if (corriendo) return;
+        this.framesRevelacion = 0; // resetear al iniciar
         corriendo = true;
         hiloJuego = new Thread(this);
         hiloJuego.start();
@@ -174,11 +228,18 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
 
     @Override
     public void run() {
+        long ultimoTiempo = System.nanoTime();
         while (corriendo) {
-            long inicio = System.nanoTime();
-            actualizar();
+            long ahora = System.nanoTime();
+            // Delta Time: segundos que han pasado desde el frame anterior
+            double delta = (ahora - ultimoTiempo) / 1_000_000_000.0;
+            ultimoTiempo = ahora;
+
+            actualizar(delta);
             renderizar();
-            long espera = TIEMPO_OBJETIVO - (System.nanoTime() - inicio);
+
+            long tiempoProcesado = System.nanoTime() - ahora;
+            long espera = TIEMPO_OBJETIVO - tiempoProcesado;
             if (espera > 0) {
                 try { Thread.sleep(espera / 1_000_000); }
                 catch (InterruptedException e) { e.printStackTrace(); }
@@ -186,7 +247,7 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
         }
     }
 
-    private void actualizar() {
+    private void actualizar(double delta) {
         EstadoJuego.Fase fase = estado.getFaseActual();
 
         if (fase == EstadoJuego.Fase.VOTACION) {
@@ -202,23 +263,28 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 m.entradaChat.setLength(0); // limpiar
             }
 
-        } else if (fase == EstadoJuego.Fase.JUGANDO) {
-
-            // Actualizar físicas y teclado del jugador local
-            Jugador jugadorLocal = estado.getJugadorLocal();
-            if (jugadorLocal != null) {
-                // ← Pasamos el ManejadorEntrada de ESTA ventana, no uno estático
-                jugadorLocal.actualizar(panelJuego.getManejadorEntrada());
+        } else if (fase == EstadoJuego.Fase.REVELACION) {
+            // sumamos frames hasta llegar a 5 segundos (60 fps * 5 seg = 300)
+            framesRevelacion++;
+            if (framesRevelacion >= 300) {
+                estado.setFaseActual(EstadoJuego.Fase.JUGANDO);
+                framesRevelacion = 0;
             }
 
-            // Actualizar interpolación visual de TODOS los jugadores (para evitar lag visual en red)
+        } else if (fase == EstadoJuego.Fase.JUGANDO) {
+
+            // Actualizar físicas y teclado del jugador local con Delta Time
+            Jugador jugadorLocal = estado.getJugadorLocal();
+            if (jugadorLocal != null) {
+                jugadorLocal.actualizar(panelJuego.getManejadorEntrada(), delta);
+            }
+
+            // Actualizar interpolación visual de TODOS los jugadores
             for (Jugador j : estado.getJugadores()) {
                 j.actualizarInterpolacion();
             }
 
             // Solo verificar victoria localmente si NO hay red.
-            // En modo red, el servidor decide quién gana (vía FIN:).
-            // Localmente no sabemos qué jugadores remotos son impostores.
             if (clienteRed == null) {
                 verificarCondicionesVictoria();
             }
@@ -239,37 +305,39 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
         }
 
         if (impostoresVivos >= tripulantesVivos && tripulantesVivos > 0)
-            finalizarJuego("¡Ganan los Impostores!");
+            finalizarJuego("Ganan los Impostores");
         else if (impostoresVivos == 0 && tripulantesVivos > 0)
-            finalizarJuego("¡Ganan los Tripulantes!");
+            finalizarJuego("Ganan los Tripulantes");
     }
 
     private void finalizarJuego(String mensajeGanador) {
-        if (estado.getFaseActual() == EstadoJuego.Fase.FINALIZADO) return; // evitar múltiples llamadas
-        estado.setFaseActual(EstadoJuego.Fase.FINALIZADO);
+        if (finalizando) return; // evitar múltiples llamadas
+        finalizando = true;
         
-        // Hilo paralelo para esperar 3 segundos y dejar que la cinemática de muerte termine
+        boolean estabaEnVotacion = (estado.getFaseActual() == EstadoJuego.Fase.VOTACION);
+
+        // Hilo paralelo para manejar la transición
         new Thread(() -> {
-            try {
-                Thread.sleep(3000); // 3 segundos de espera (la cinemática dura ~2.8s)
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            // Solo esperamos 3 segundos si estábamos en la fase de JUGANDO (para ver la cinemática).
+            // Si estábamos en VOTACION, no hay cinemática, así que saltamos directo.
+            if (!estabaEnVotacion) {
+                try {
+                    Thread.sleep(3000); // 3 segundos de espera (la cinemática dura ~2.8s)
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
             
-            corriendo = false;
-            String equipo = mensajeGanador.contains("Impostores") ? "Impostores" : "Tripulantes";
-            GestorDatos.guardarPartida(equipo, estado.getJugadores().size());
-
-            SwingUtilities.invokeLater(() -> {
-                PantallaFinJuego dialog = new PantallaFinJuego(null, mensajeGanador);
-                dialog.setVisible(true);
-                // System.exit(0) se debe manejar desde PantallaFinJuego idealmente, pero lo mantenemos para compatibilidad
-                // System.exit(0); // <-- comentado si quieres que cierre gracefully, lo dejamos por ahora si es como estaba
-            });
+            // NO ponemos "corriendo = false" para que el ciclo de renderizado siga pintando la victoria
+            estado.setMensajeGanador(mensajeGanador);
+            estado.setFaseActual(EstadoJuego.Fase.FINALIZADO);
+            
+            // Nota: Se removió la duplicación de guardado de XML aquí, 
+            // ya que el Servidor.java ya lo está guardando para todos.
         }).start();
     }
 
     private void renderizar() {
-        if (panelJuego != null) SwingUtilities.invokeLater(panelJuego::repaint);
+        if (panelJuego != null) panelJuego.repaint();
     }
 }

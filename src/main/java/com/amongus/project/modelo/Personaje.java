@@ -26,10 +26,10 @@ public class Personaje {
      * Actualiza la interpolación suave. Debe ser llamado desde el bucle de juego o panel.
      */
     public void actualizarInterpolacion() {
-        if (Math.abs(drawX - x) > 0.5) drawX += (x - drawX) * 0.3;
+        if (Math.abs(drawX - x) > 0.5) drawX += (x - drawX) * 0.75;
         else drawX = x;
 
-        if (Math.abs(drawY - y) > 0.5) drawY += (y - drawY) * 0.3;
+        if (Math.abs(drawY - y) > 0.5) drawY += (y - drawY) * 0.75;
         else drawY = y;
     }
 
@@ -61,7 +61,11 @@ public class Personaje {
             if (nuevoY > mapa.getAlto() - hitbox.height) nuevoY = mapa.getAlto() - hitbox.height;
 
             Rectangle hitboxFutura = new Rectangle(nuevoX, nuevoY, hitbox.width, hitbox.height);
-            if (!mapa.hayColision(hitboxFutura)) {
+            
+            // Los fantasmas (jugadores muertos) ignoran las colisiones
+            boolean esFantasma = (this instanceof Jugador && !((Jugador)this).isVivo());
+            
+            if (esFantasma || !mapa.hayColision(hitboxFutura)) {
                 this.x = nuevoX;
                 this.y = nuevoY;
             }

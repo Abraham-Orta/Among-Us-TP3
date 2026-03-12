@@ -95,7 +95,7 @@ public class Mapa {
      *                          PanelJuego lo obtiene de su instancia de ManejadorEntrada.
      */
     public void render(Graphics g, boolean modoDesarrollador) {
-        // Fondo: imagen real o gris de respaldo
+        // Fondo: imagen real o gris de respaldo (Restaurado al original completo)
         if (imagenFondo != null) {
             g.drawImage(imagenFondo, 0, 0, null);
         } else {

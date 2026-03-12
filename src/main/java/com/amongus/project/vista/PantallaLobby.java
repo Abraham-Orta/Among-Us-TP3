@@ -28,14 +28,22 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     private JComboBox<String> selectorMapa;
     private final String[] MAPAS_DISPONIBLES = {"mapa1.png", "mapa2.png"};
 
+    // --- SISTEMA DE SOMBREROS ---
+    private List<String> listaSombreros = new ArrayList<>();
+    private int indiceSombreroActual = 0;
+    private JLabel lblVistaPreviaSombrero;
+    private java.util.Map<String, String> sombrerosJugadores = new java.util.HashMap<>();
+    // ----------------------------
+
     private boolean soyImpostor = false; // Rol asignado por el servidor
     private List<String> companerosImpostores = new ArrayList<>(); // Lista de compañeros impostores
 
     // Cada cliente tiene su propio EstadoJuego — NO compartido entre ventanas
     private EstadoJuego estadoJuego;
 
-    // Caché del icono de jugador — se carga una sola vez
+    // --- CACHÉ DE ICONOS PARA OPTIMIZACIÓN ---
     private ImageIcon iconoJugadorCache;
+    private java.util.Map<String, ImageIcon> cacheSombrerosLobby = new java.util.HashMap<>();
 
     public PantallaLobby(String nombreJugador, boolean esHost, Cliente cliente) {
         this.nombreJugador       = nombreJugador;
@@ -49,7 +57,7 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         jugadoresConectados.add(nombreJugador);
 
         setTitle("Among Us - Sala de Espera");
-        setSize(700, 500);
+        setSize(850, 650); // AUMENTADO para dar más espacio a los elementos
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DO_NOTHING_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -168,7 +176,69 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         scroll.setOpaque(false);
         scroll.getViewport().setOpaque(false);
         scroll.setBorder(BorderFactory.createLineBorder(Color.WHITE, 2));
+        
+        // PERSONALIZACIÓN DE BARRA DE DESPLAZAMIENTO (SCROLLBAR) - ESTILO NEGRO
+        scroll.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(60, 60, 60)); // Gris oscuro
+                g2.fillRoundRect(thumbBounds.x + 4, thumbBounds.y + 2, thumbBounds.width - 8, thumbBounds.height - 4, 10, 10);
+                g2.dispose();
+            }
+            @Override
+            protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+                g.setColor(new Color(15, 15, 15)); // Negro
+                g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+            }
+            @Override
+            protected JButton createDecreaseButton(int orientation) { return crearBotonInvisible(); }
+            @Override
+            protected JButton createIncreaseButton(int orientation) { return crearBotonInvisible(); }
+            private JButton crearBotonInvisible() {
+                JButton b = new JButton(); b.setPreferredSize(new Dimension(0, 0)); return b;
+            }
+        });
+        
         panelCentral.add(scroll, BorderLayout.CENTER);
+
+        // --- PANEL DE SELECCIÓN DE SOMBRERO ---
+        JPanel panelSombrero = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
+        panelSombrero.setOpaque(false);
+
+        // Inicializar lista de sombreros (IDs hats0002 a hats0110 - Se saltó el 0001 por eliminación)
+        listaSombreros.add("ninguno");
+        for (int i = 2; i <= 110; i++) {
+            listaSombreros.add(String.format("hats%04d", i));
+        }
+
+        JButton btnAnterior = crearBotonFlecha(true);
+        JButton btnSiguiente = crearBotonFlecha(false);
+
+        lblVistaPreviaSombrero = new JLabel();
+        lblVistaPreviaSombrero.setPreferredSize(new Dimension(80, 80));
+        lblVistaPreviaSombrero.setHorizontalAlignment(SwingConstants.CENTER);
+        actualizarVistaPreviaSombrero();
+
+        btnAnterior.addActionListener(e -> {
+            indiceSombreroActual = (indiceSombreroActual - 1 + listaSombreros.size()) % listaSombreros.size();
+            actualizarVistaPreviaSombrero();
+            enviarSombreroRed();
+        });
+
+        btnSiguiente.addActionListener(e -> {
+            indiceSombreroActual = (indiceSombreroActual + 1) % listaSombreros.size();
+            actualizarVistaPreviaSombrero();
+            enviarSombreroRed();
+        });
+
+        panelSombrero.add(btnAnterior);
+        panelSombrero.add(lblVistaPreviaSombrero);
+        panelSombrero.add(btnSiguiente);
+
+        panelCentral.add(panelSombrero, BorderLayout.SOUTH);
+        // ---------------------------------------
 
         panelFondo.add(panelCentral, BorderLayout.CENTER);
 
@@ -192,48 +262,90 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
     }
 
     private void actualizarListaJugadores() {
+        if (panelJugadores == null) return;
+        
         panelJugadores.removeAll();
 
-        // Cargar icono solo la primera vez
+        // 1. CARGA ROBUSTA DEL ICONO
         if (iconoJugadorCache == null) {
             try {
-                String[] posiblesNombres = {"Imagen_Espera.png", "Imagen_Espera.jpg", "icono_jugador.png"};
+                String n = "icono_espera.jpg"; // Nombre corregido
                 Image img = null;
-                for (String n : posiblesNombres) {
-                    java.net.URL u = getClass().getClassLoader().getResource(n);
-                    if (u != null) { img = ImageIO.read(u); break; }
+                
+                // Intento 1: Classloader
+                java.net.URL u = getClass().getClassLoader().getResource(n);
+                if (u != null) img = ImageIO.read(u);
+                
+                // Intento 2: Rutas físicas
+                if (img == null) {
                     String[] rutas = {"src/main/resources/" + n, "resources/" + n, n};
                     for (String r : rutas) {
                         File f = new File(r);
                         if (f.exists()) { img = ImageIO.read(f); break; }
                     }
-                    if (img != null) break;
                 }
-                if (img != null) iconoJugadorCache = new ImageIcon(img.getScaledInstance(48, 32, Image.SCALE_SMOOTH));
+                
+                if (img != null) {
+                    iconoJugadorCache = new ImageIcon(img.getScaledInstance(48, 32, Image.SCALE_SMOOTH));
+                }
             } catch (Exception e) {
-                System.err.println("No se pudo cargar el icono del jugador: " + e.getMessage());
+                System.err.println("No se pudo cargar el icono del jugador en el Lobby");
             }
         }
 
-        for (String jugador : jugadoresConectados) {
-            JLabel lbl = new JLabel();
-            String nombre = jugador.trim();
-            if (iconoJugadorCache != null) {
-                lbl.setIcon(iconoJugadorCache);
-                lbl.setText(nombre);
-                lbl.setIconTextGap(15);
-            } else {
-                lbl.setText("- " + nombre);
+        // 2. Construir la lista visual
+        for (String nombre : jugadoresConectados) {
+            JPanel fila = new JPanel(new FlowLayout(FlowLayout.LEFT, 15, 0));
+            fila.setOpaque(false);
+            fila.setMaximumSize(new Dimension(600, 60));
+
+            // Capa de Iconos (Cuerpo + Sombrero encima)
+            JPanel capaIconos = new JPanel(null);
+            capaIconos.setPreferredSize(new Dimension(60, 50));
+            capaIconos.setOpaque(false);
+
+            // Icono del Tripulante (Abajo)
+            JLabel lblJugador = new JLabel(iconoJugadorCache);
+            lblJugador.setBounds(0, 15, 48, 32);
+            capaIconos.add(lblJugador);
+
+            // Icono del Sombrero (Arriba)
+            String idSom = sombrerosJugadores.getOrDefault(nombre.trim(), "ninguno");
+            if (idSom != null && !idSom.equals("ninguno")) {
+                Image imgS = PanelJuego.obtenerImagenFija("sprites/sombreros/" + idSom + ".png");
+                if (imgS != null) {
+                    JLabel lblSom = new JLabel(new ImageIcon(imgS.getScaledInstance(45, 35, Image.SCALE_SMOOTH)));
+                    lblSom.setBounds(2, 0, 45, 35);
+                    capaIconos.add(lblSom);
+                    capaIconos.setComponentZOrder(lblSom, 0); // Forzar sombrero al frente
+                }
             }
-            lbl.setFont(cargarFuente(24f));
-            lbl.setForeground(Color.WHITE);
-            lbl.setAlignmentX(Component.CENTER_ALIGNMENT);
-            panelJugadores.add(lbl);
+
+            // Nombre
+            JLabel lblNombre = new JLabel(nombre.trim());
+            lblNombre.setFont(cargarFuente(24f));
+            lblNombre.setForeground(Color.WHITE);
+
+            fila.add(capaIconos);
+            fila.add(lblNombre);
+            
+            panelJugadores.add(fila);
             panelJugadores.add(Box.createRigidArea(new Dimension(0, 15)));
         }
 
+        // 3. REFRESO MAESTRO: Forzamos a toda la cadena de componentes a actualizarse
         panelJugadores.revalidate();
         panelJugadores.repaint();
+        
+        // Buscamos el ScrollPane que contiene al panel y lo refrescamos también
+        Container parent = panelJugadores.getParent();
+        if (parent instanceof JViewport) {
+            Container scroll = parent.getParent();
+            if (scroll instanceof JScrollPane) {
+                scroll.revalidate();
+                scroll.repaint();
+            }
+        }
     }
 
     public void agregarJugador(String nombre) {
@@ -245,6 +357,15 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
 
     private void iniciarPartida() {
         if (cliente != null) {
+            // Validación de rúbrica: mínimo 5 jugadores para iniciar
+            if (jugadoresConectados.size() < 5) {
+                JOptionPane.showMessageDialog(this, 
+                    "Se necesitan al menos 5 jugadores para iniciar (Regla del proyecto).", 
+                    "Jugadores insuficientes", 
+                    JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             String mapaSeleccionado = "mapa1.png";
             if (selectorMapa != null) {
                 mapaSeleccionado = MAPAS_DISPONIBLES[selectorMapa.getSelectedIndex()];
@@ -294,14 +415,32 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         if (mensaje.startsWith("LISTA_JUGADORES:")) {
             String listaStr = mensaje.substring(16);
             if (listaStr.isEmpty()) return;
-            String[] nombres = listaStr.split(",");
+            String[] entradas = listaStr.split(",");
             SwingUtilities.invokeLater(() -> {
                 jugadoresConectados.clear();
-                for (String n : nombres) {
-                    if (n != null && !n.trim().isEmpty()) jugadoresConectados.add(n.trim());
+                for (String entrada : entradas) {
+                    if (entrada.contains(":")) {
+                        String[] partes = entrada.split(":");
+                        String nom = partes[0].trim();
+                        String som = partes[1].trim();
+                        jugadoresConectados.add(nom);
+                        sombrerosJugadores.put(nom, som);
+                    } else {
+                        String nom = entrada.trim();
+                        if (!nom.isEmpty()) jugadoresConectados.add(nom);
+                    }
                 }
                 actualizarListaJugadores();
             });
+
+        } else if (mensaje.startsWith("SOMBRERO:")) {
+            try {
+                String[] p = mensaje.split(":");
+                String nom = p[1].trim();
+                String som = p[2].trim();
+                sombrerosJugadores.put(nom, som);
+                actualizarListaJugadores();
+            } catch (Exception e) {}
 
         } else if (mensaje.startsWith("ROL:")) {
             // El servidor nos susurra el rol
@@ -330,31 +469,54 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             Color[] todosColores = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.CYAN,
                                     Color.MAGENTA, Color.ORANGE, Color.PINK, Color.WHITE};
 
-            // Determinar el índice de ESTE jugador en la lista de conectados
-            int miIndice = jugadoresConectados.indexOf(nombreJugador);
+            // Determinar el índice de ESTE jugador (Comparación robusta)
+            int miIndice = -1;
+            for (int i = 0; i < jugadoresConectados.size(); i++) {
+                if (jugadoresConectados.get(i).trim().equalsIgnoreCase(nombreJugador.trim())) {
+                    miIndice = i;
+                    break;
+                }
+            }
             if (miIndice < 0) miIndice = 0;
             Color miColor = todosColores[miIndice % todosColores.length];
 
-            // Crear nuestro propio jugador con el rol recibido y color único
-            Jugador jugadorLocal = new Jugador(nombreJugador, 100, 100, miColor, soyImpostor);
+            // Crear nuestro propio jugador local
+            Jugador jugadorLocal = new Jugador(nombreJugador.trim(), 100, 100, miColor, soyImpostor);
+            jugadorLocal.setSombrero(listaSombreros.get(indiceSombreroActual));
             jugadorLocal.setClienteRed(this.cliente);
             jugadorLocal.setEstadoJuego(estadoJuego);
             estadoJuego.setJugadorLocal(jugadorLocal);
 
-            // Crear jugadores remotos (sin conocer sus roles a menos que seamos impostores)
+            // Crear jugadores remotos SINCRONIZADOS
             for (int idx = 0; idx < jugadoresConectados.size(); idx++) {
-                String nombre = jugadoresConectados.get(idx);
-                if (!nombre.equals(nombreJugador)) {
+                String nombreRemoto = jugadoresConectados.get(idx).trim();
+                if (!nombreRemoto.equalsIgnoreCase(nombreJugador.trim())) {
                     Color colorRemoto = todosColores[idx % todosColores.length];
-                    boolean esRemotoImpostor = soyImpostor && companerosImpostores.contains(nombre);
-                    Jugador otro = new Jugador(nombre, 150 + (idx * 50), 100,
-                                              colorRemoto, esRemotoImpostor);
+                    
+                    // RECONOCIMIENTO DE IMPOSTORES: Comparación manual robusta
+                    boolean esRemotoImpostor = false;
+                    if (soyImpostor) {
+                        for (String compa : companerosImpostores) {
+                            if (compa.trim().equalsIgnoreCase(nombreRemoto)) {
+                                esRemotoImpostor = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    Jugador otro = new Jugador(nombreRemoto, 150 + (idx * 50), 100, colorRemoto, esRemotoImpostor);
+                    
+                    // ¡CLAVE! Pasamos el sombrero que el servidor nos dijo en el Lobby
+                    String sombreroRemoto = sombrerosJugadores.getOrDefault(nombreRemoto, "ninguno");
+                    otro.setSombrero(sombreroRemoto);
+                    
                     otro.setEstadoJuego(estadoJuego);
                     estadoJuego.agregarJugador(otro);
                 }
             }
 
-            estadoJuego.setFaseActual(EstadoJuego.Fase.JUGANDO);
+            estadoJuego.setFaseActual(EstadoJuego.Fase.REVELACION);
+            enviarSombreroRed(); // Notificamos una última vez al entrar
 
             SwingUtilities.invokeLater(() -> abrirJuego());
         }
@@ -432,6 +594,60 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
                 g.fillRect(0, 0, getWidth(), getHeight());
             }
         };
+    }
+
+    private JButton crearBotonFlecha(boolean izquierda) {
+        JButton b = new JButton() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                
+                Image imgFlecha = PanelJuego.obtenerImagenFija("flecha.png");
+                if (imgFlecha != null) {
+                    if (izquierda) {
+                        g2.drawImage(imgFlecha, 0, 0, getWidth(), getHeight(), null);
+                    } else {
+                        // Espejo horizontal para la flecha derecha
+                        g2.drawImage(imgFlecha, getWidth(), 0, -getWidth(), getHeight(), null);
+                    }
+                } else {
+                    g2.setColor(Color.WHITE);
+                    g2.fillPolygon(izquierda ? new int[]{getWidth(), 0, getWidth()} : new int[]{0, getWidth(), 0},
+                                   new int[]{0, getHeight()/2, getHeight()}, 3);
+                }
+                g2.dispose();
+            }
+        };
+        b.setPreferredSize(new Dimension(40, 40));
+        b.setContentAreaFilled(false);
+        b.setBorderPainted(false);
+        b.setFocusPainted(false);
+        b.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        return b;
+    }
+
+    private void actualizarVistaPreviaSombrero() {
+        String idSombrero = listaSombreros.get(indiceSombreroActual);
+        if (idSombrero.equals("ninguno")) {
+            lblVistaPreviaSombrero.setIcon(null);
+            lblVistaPreviaSombrero.setText("SIN SKIN");
+            lblVistaPreviaSombrero.setForeground(Color.GRAY);
+            lblVistaPreviaSombrero.setFont(cargarFuente(18f));
+        } else {
+            lblVistaPreviaSombrero.setText("");
+            Image img = PanelJuego.obtenerImagenFija("sprites/sombreros/" + idSombrero + ".png");
+            if (img != null) {
+                lblVistaPreviaSombrero.setIcon(new ImageIcon(img.getScaledInstance(60, 50, Image.SCALE_SMOOTH)));
+            }
+        }
+    }
+
+    private void enviarSombreroRed() {
+        if (cliente != null) {
+            String idSombrero = listaSombreros.get(indiceSombreroActual);
+            cliente.enviarMensaje("SOMBRERO:" + nombreJugador + ":" + idSombrero);
+        }
     }
 
     private Font cargarFuente(float tamano) {

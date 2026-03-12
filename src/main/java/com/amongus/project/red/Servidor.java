@@ -118,7 +118,18 @@ import java.util.Map;public class Servidor {
         partidaIniciada = false;
         enVotacion = false;
         System.out.println("La partida terminó. Ganaron: " + equipoGanador);
+
+        // Revelar impostores a todos los clientes para la pantalla de victoria
+        StringBuilder listaImpostores = new StringBuilder();
+        for (AtencionJugador j : listaJugadores) {
+            if (j.esImpostor && j.getNombreJugador() != null) {
+                if (listaImpostores.length() > 0) listaImpostores.append(",");
+                listaImpostores.append(j.getNombreJugador());
+            }
+        }
+        enviarATodos("REVELAR_IMPOSTORES:" + listaImpostores.toString());
         enviarATodos("FIN:" + equipoGanador);
+        
         GestorDatos.guardarPartida(equipoGanador, listaJugadores.size());
         System.out.println("Datos guardados en el XML.");
     }
@@ -242,13 +253,15 @@ import java.util.Map;public class Servidor {
     public static void enviarListaJugadores() {
         StringBuilder lista = new StringBuilder("LISTA_JUGADORES:");
         for (int i = 0; i < listaJugadores.size(); i++) {
-            String nombre = listaJugadores.get(i).getNombreJugador();
+            AtencionJugador aj = listaJugadores.get(i);
+            String nombre = aj.getNombreJugador();
             if (nombre != null) {
-                lista.append(nombre);
+                // Formato: Nombre:IdSombrero
+                lista.append(nombre).append(":").append(aj.getIdSombrero());
                 if (i < listaJugadores.size() - 1) lista.append(",");
             }
         }
-        System.out.println("Enviando lista: " + lista);
+        System.out.println("Enviando lista sincronizada: " + lista);
         enviarATodos(lista.toString());
     }
 }

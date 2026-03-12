@@ -176,6 +176,30 @@ public class PantallaAcercaDe extends JFrame {// Clase que representa una ventan
         scroll.getViewport().setOpaque(false); // Viewport transparente
         scroll.setOpaque(false);// ScrollPane transparente
 
+        // PERSONALIZACIÓN DE BARRA DE DESPLAZAMIENTO (SCROLLBAR) - ESTILO NEGRO
+        scroll.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI() {
+            @Override
+            protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds) {
+                Graphics2D g2 = (Graphics2D) g.create();
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setColor(new Color(60, 60, 60)); // Gris oscuro
+                g2.fillRoundRect(thumbBounds.x + 4, thumbBounds.y + 2, thumbBounds.width - 8, thumbBounds.height - 4, 10, 10);
+                g2.dispose();
+            }
+            @Override
+            protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
+                g.setColor(new Color(15, 15, 15)); // Negro
+                g.fillRect(trackBounds.x, trackBounds.y, trackBounds.width, trackBounds.height);
+            }
+            @Override
+            protected JButton createDecreaseButton(int orientation) { return crearBotonInvisible(); }
+            @Override
+            protected JButton createIncreaseButton(int orientation) { return crearBotonInvisible(); }
+            private JButton crearBotonInvisible() {
+                JButton b = new JButton(); b.setPreferredSize(new Dimension(0, 0)); return b;
+            }
+        });
+
         add(scroll);// Añade el ScrollPane a la ventana (JFrame)
     }
 

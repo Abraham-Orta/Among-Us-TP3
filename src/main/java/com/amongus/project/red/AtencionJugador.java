@@ -18,6 +18,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     private PrintWriter salida; // Canal para hablarle al jugador
     private String nombreJugador; // Guardamos el nombre (ej: "Samuel")
     public boolean esImpostor = false;
+    private String idSombrero = "ninguno"; // MEMORIA DEL SERVIDOR
 
     // Estado del movimiento del jugador, controlado por el servidor
     public boolean moviendoArriba = false;
@@ -57,11 +58,6 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
             
             // Bucle infinito: Leemos mensajes mientras la conexion siga viva
             while ((lineaRecibida = entrada.readLine()) != null) { // Leemos una linea
-                
-                // Imprimimos en la consola del servidor lo que llego (ocultamos los MOVER para no saturar)
-                if (!lineaRecibida.startsWith("MOVER:")) {
-                    System.out.println("El jugador dijo: " + lineaRecibida); 
-                }
                 
                 // AQUI ANALIZAMOS QUE NOS DIJO EL JUGADOR
                 
@@ -166,6 +162,14 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                 else if (lineaRecibida.equals("COMANDO:GANAR_IMPOSTORES")) {
                     Servidor.finalizarPartida("Impostores"); // Guardamos en XML
                 }
+                // Sincronizar cambio de sombrero: SOMBRERO:nombre:idSombrero
+                else if (lineaRecibida.startsWith("SOMBRERO:")) {
+                    String[] p = lineaRecibida.split(":");
+                    if (p.length >= 3) {
+                        this.idSombrero = p[2];
+                    }
+                    Servidor.enviarATodos(lineaRecibida);
+                }
                 // Si es cualquier otra cosa (como chat normal)
                 else {
                     // Lo reenviamos a todos tal cual
@@ -205,6 +209,10 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     // Metodo para obtener el nombre del jugador
     public String getNombreJugador() {
         return nombreJugador;
+    }
+
+    public String getIdSombrero() {
+        return idSombrero;
     }
 
 }

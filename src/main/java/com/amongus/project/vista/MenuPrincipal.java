@@ -55,29 +55,33 @@ public class MenuPrincipal extends JFrame {
         JPanel panelLogo = crearPanelLogo();
         panelBotones.add(panelLogo);
 
-        // Un pequeño espacio de 20px antes de los botones
-        panelBotones.add(Box.createRigidArea(new Dimension(0, 20)));
+        // Un gran espacio flexible para empujar los botones hacia abajo y no tapar el arte
+        panelBotones.add(Box.createVerticalGlue());
 
         // Parte de los botones
         // Agregamos cada botón con su acción específica.
 
         // Botón de Jugar
         panelBotones.add(crearBotonMenu("Jugar"));
-        panelBotones.add(Box.createRigidArea(new Dimension(0, 15))); // Espacio
+        panelBotones.add(Box.createRigidArea(new Dimension(0, 25))); // Más aire entre botones
 
         // Botón de Ayuda
         panelBotones.add(crearBotonMenu("Ayuda"));
-        panelBotones.add(Box.createRigidArea(new Dimension(0, 15)));
+        panelBotones.add(Box.createRigidArea(new Dimension(0, 25)));
+
+        // Botón de Registro
+        panelBotones.add(crearBotonMenu("Registro"));
+        panelBotones.add(Box.createRigidArea(new Dimension(0, 25)));
 
         // Botón de Acerca De
         panelBotones.add(crearBotonMenu("Acerca de"));
-        panelBotones.add(Box.createRigidArea(new Dimension(0, 15)));
+        panelBotones.add(Box.createRigidArea(new Dimension(0, 25)));
 
         // Botón de Salir
         panelBotones.add(crearBotonMenu("Salir"));
 
-        // aqui empujamos todo hacia arriba con un resorte invisible al final
-        panelBotones.add(Box.createVerticalGlue());
+        // Un pequeño margen inferior para que no queden pegados al borde de la ventana
+        panelBotones.add(Box.createRigidArea(new Dimension(0, 40)));
 
         // aqui se puede observar el centrado final
         // Usamos GridBagLayout para centrar el panel de botones en toda la ventana
@@ -299,9 +303,9 @@ public class MenuPrincipal extends JFrame {
         };
 
         // Estilos del boton
-        boton.setMaximumSize(new Dimension(450, 70));     // Tamaño maximo
-        boton.setPreferredSize(new Dimension(350, 60));   // Tamaño preferido
-        boton.setFont(cargarFuente(28f));                 // Fuente personalizada
+        boton.setMaximumSize(new Dimension(280, 50));     // Tamaño maximo (más pequeño)
+        boton.setPreferredSize(new Dimension(280, 50));   // Tamaño preferido (más pequeño)
+        boton.setFont(cargarFuente(24f));                 // Fuente personalizada ajustada
         boton.setForeground(Color.WHITE);                 // Color del texto
         boton.setAlignmentX(Component.CENTER_ALIGNMENT);  // Centrado horizontal
 
@@ -320,6 +324,10 @@ public class MenuPrincipal extends JFrame {
             case "Ayuda":
                 // Aquí abrimos la nueva clase PantallaAyuda
                 boton.addActionListener(e -> new PantallaAyuda().setVisible(true));
+                break;
+            case "Registro":
+                // Aquí abrimos la nueva clase PantallaRegistro
+                boton.addActionListener(e -> new PantallaRegistro().setVisible(true));
                 break;
             case "Acerca de":
                 // Aquí abrimos la nueva clase PantallaAcercaDe

@@ -124,4 +124,53 @@ public class GestorDatos {
             error.printStackTrace();
         }
     }
+
+    /**
+     * Este método lee la "libreta" y devuelve una lista con los datos de cada partida.
+     */
+    public static java.util.List<String[]> leerHistorial() {
+        java.util.List<String[]> historial = new java.util.ArrayList<>();
+        try {
+            File archivo = new File(NOMBRE_ARCHIVO_HISTORIAL);
+            if (!archivo.exists()) return historial;
+
+            DocumentBuilderFactory fabrica = DocumentBuilderFactory.newInstance();
+            DocumentBuilder constructor = fabrica.newDocumentBuilder();
+            Document doc = constructor.parse(archivo);
+            doc.getDocumentElement().normalize();
+
+            NodeList listaPartidas = doc.getElementsByTagName("Partida");
+
+            for (int i = 0; i < listaPartidas.getLength(); i++) {
+                Node nodo = listaPartidas.item(i);
+                if (nodo.getNodeType() == Node.ELEMENT_NODE) {
+                    Element elemento = (Element) nodo;
+                    
+                    // MÉTODO SEGURO: Verificamos si los elementos existen antes de pedir su contenido
+                    String fecha = getValorEtiqueta(elemento, "Fecha");
+                    String ganador = getValorEtiqueta(elemento, "Ganador");
+                    String jugadores = getValorEtiqueta(elemento, "Jugadores");
+                    
+                    historial.add(new String[]{fecha, ganador, jugadores});
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Error leyendo el historial: " + e.getMessage());
+        }
+        return historial;
+    }
+
+    /**
+     * Método auxiliar para extraer texto de una etiqueta XML sin que el programa explote si no existe.
+     */
+    private static String getValorEtiqueta(Element elemento, String nombreEtiqueta) {
+        NodeList nodos = elemento.getElementsByTagName(nombreEtiqueta);
+        if (nodos != null && nodos.getLength() > 0) {
+            Node nodoVal = nodos.item(0);
+            if (nodoVal != null) {
+                return nodoVal.getTextContent();
+            }
+        }
+        return "N/A"; // Valor por defecto si falta el dato
+    }
 }

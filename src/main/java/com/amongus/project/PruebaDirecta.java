@@ -38,6 +38,13 @@ public class PruebaDirecta {
         lanzarCliente("Jugador4", false);
         lanzarCliente("Jugador5", false);
         lanzarCliente("Jugador6", false);
+
+
+
+
+
+
+
     }
 
     // -------------------------------------------------------

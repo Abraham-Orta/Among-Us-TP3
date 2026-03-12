@@ -9,11 +9,7 @@ import com.amongus.project.controlador.ManejadorEntrada;
  * Clase Jugador
  * =============
  * Representa a los participantes del juego.
- * actualizar(ManejadorEntrada) recibe el manejador de la ventana específica
- * del jugador, no un objeto estático compartido.
- *
- * Cada Jugador tiene una referencia a su EstadoJuego correspondiente,
- * para que múltiples clientes en el mismo proceso no compartan estado.
+ * Cada Jugador tiene una referencia a su EstadoJuego correspondiente.
  */
 public class Jugador extends Personaje {
 
@@ -21,13 +17,16 @@ public class Jugador extends Personaje {
     private Color   color;
     private boolean impostor;
     private boolean vivo = true;
+    private boolean fueExpulsado = false;
+    private int xMuerte;
+    private int yMuerte;
+    private int direccionMuerte = 1;
+    private String sombrero = "ninguno"; // ID del sombrero actual
 
     // Red
     private int ultimoXEnviado = -1;
     private int ultimoYEnviado = -1;
     private com.amongus.project.red.Cliente clienteRed;
-
-    // estadoJuego se hereda de Personaje
 
     // Votación
     private boolean haVotado    = false;
@@ -44,9 +43,13 @@ public class Jugador extends Personaje {
     private int cooldownVentilacion = 0;
     private int cooldownReporte     = 0;
     private int cooldownSabotaje    = 0;
+    
+    // Contadores
+    private int usosVentilacion = 0;
+    private int usosSabotaje = 0;
 
     public Jugador(String nombre, int x, int y, Color color, boolean impostor) {
-        super(x, y, 4);
+        super(x, y, 4); // Velocidad original de 4
         this.nombre   = nombre;
         this.color    = color;
         this.impostor = impostor;
@@ -102,53 +105,32 @@ public class Jugador extends Personaje {
     //  BUCLE PRINCIPAL
     // ==========================================
 
-    /**
-     * Se ejecuta ~60 veces por segundo desde BucleJuego.
-     *
-     * @param entrada El ManejadorEntrada de la ventana de ESTE jugador.
-     *                Cada ventana tiene su propia instancia → múltiples
-     *                ventanas abiertas no se interfieren entre sí.
-     */
-    public void actualizar(ManejadorEntrada entrada) {
-
-        // Reducir cooldowns cada frame
+    public void actualizar(ManejadorEntrada entrada, double delta) {
+        // Reducir cooldowns
         if (cooldownAsesinato   > 0) cooldownAsesinato--;
         if (cooldownVentilacion > 0) cooldownVentilacion--;
         if (cooldownReporte     > 0) cooldownReporte--;
         if (cooldownSabotaje    > 0) cooldownSabotaje--;
 
-        // Jugador inhabilitado: no hace nada
-        if (!vivo) return;
-
-        // --- 1. ACCIONES DEL IMPOSTOR ---
-        if (impostor) {
-            if (entrada.accionMatar && cooldownAsesinato <= 0) {
-                intentarParalizar();
-            }
-            if (entrada.accionVentilar && cooldownVentilacion <= 0) {
-                intentarUsarAlcantarilla();
-            }
-            if (entrada.accionSabotaje && cooldownSabotaje <= 0) {
-                if (clienteRed != null) {
-                    boolean actual = estadoJuego.areLucesSaboteadas();
-                    clienteRed.enviarMensaje(actual ? "SABOTAJE:LUCES:OFF" : "SABOTAJE:LUCES:ON");
-                } else {
-                    boolean actual = estadoJuego.areLucesSaboteadas();
-                    estadoJuego.setLucesSaboteadas(!actual);
-                    System.out.println("Sabotaje local: luces " + (!actual ? "APAGADAS" : "RESTAURADAS"));
+        if (vivo) {
+            if (impostor) {
+                if (entrada.accionMatar && cooldownAsesinato <= 0) {
+                    intentarParalizar();
                 }
-                cooldownSabotaje = 60;
+                if (entrada.accionVentilar && cooldownVentilacion <= 0) {
+                    intentarUsarAlcantarilla();
+                }
+                if (entrada.accionSabotaje && cooldownSabotaje <= 0) {
+                    ejecutarSabotaje();
+                }
+            }
+            if (entrada.accionReportar && cooldownReporte <= 0) {
+                intentarReportar();
             }
         }
 
-        // --- 2. REPORTE (todos pueden reportar) ---
-        if (entrada.accionReportar && cooldownReporte <= 0) {
-            intentarReportar();
-        }
-
-        // --- 3. MOVIMIENTO ---
+        // Movimiento con Delta Time
         int dx = 0, dy = 0;
-
         if (entrada.arriba)    dy -= 1;
         if (entrada.abajo)     dy += 1;
         if (entrada.izquierda) dx -= 1;
@@ -156,8 +138,9 @@ public class Jugador extends Personaje {
 
         if (dx != 0 || dy != 0) {
             double mag = Math.sqrt(dx * dx + dy * dy);
-            super.mover((int) Math.round((dx / mag) * velocidad),
-                        (int) Math.round((dy / mag) * velocidad));
+            double factorVelocidad = velocidad * 60.0 * delta;
+            super.mover((int) Math.round((dx / mag) * factorVelocidad),
+                        (int) Math.round((dy / mag) * factorVelocidad));
             enviarPosicionSiCambio();
         }
     }
@@ -175,9 +158,10 @@ public class Jugador extends Personaje {
                 if (Math.sqrt(dx * dx + dy * dy) <= 50) {
                     victima.setVivo(false);
                     this.iniciarAnimacionAtaque();
-                    System.out.println(nombre + " paralizó a " + victima.getNombre());
                     cooldownAsesinato = 600;
-                    if (clienteRed != null) clienteRed.enviarMensaje("MATAR:" + nombre + "," + victima.getNombre());
+                    if (clienteRed != null) {
+                        clienteRed.enviarMensaje("MATAR:" + nombre + "," + victima.getNombre() + "," + victima.getX() + "," + victima.getY());
+                    }
                     break;
                 }
             }
@@ -187,31 +171,50 @@ public class Jugador extends Personaje {
     private void intentarUsarAlcantarilla() {
         Mapa mapa = estadoJuego.getMapa();
         if (mapa == null) return;
-        List<java.awt.Rectangle> vias = mapa.getAlcantarillas();
+        List<Rectangle> vias = mapa.getAlcantarillas();
         for (int i = 0; i < vias.size(); i++) {
             if (this.hitbox.intersects(vias.get(i))) {
                 Rectangle destino = vias.get((i + 1) % vias.size());
                 this.setX(destino.x + 10);
                 this.setY(destino.y + 10);
-                System.out.println(nombre + " usó una alcantarilla.");
-                cooldownVentilacion = 60;
+                usosVentilacion++;
+                cooldownVentilacion = 30; 
+                if (usosVentilacion >= 4) {
+                    cooldownVentilacion = 600; 
+                    usosVentilacion = 0;
+                }
                 break;
             }
+        }
+    }
+
+    private void ejecutarSabotaje() {
+        if (clienteRed != null) {
+            boolean actual = estadoJuego.areLucesSaboteadas();
+            clienteRed.enviarMensaje(actual ? "SABOTAJE:LUCES:OFF" : "SABOTAJE:LUCES:ON");
+        } else {
+            estadoJuego.setLucesSaboteadas(!estadoJuego.areLucesSaboteadas());
+        }
+        usosSabotaje++;
+        cooldownSabotaje = 30; 
+        if (usosSabotaje >= 5) {
+            cooldownSabotaje = 600;
+            usosSabotaje = 0;
         }
     }
 
     private void intentarReportar() {
         List<Jugador> todos = estadoJuego.getJugadores();
         for (Jugador victima : todos) {
-            if (victima != this && !victima.isVivo()) {
-                int dx = this.x - victima.getX();
-                int dy = this.y - victima.getY();
+            if (victima != this && !victima.isVivo() && !victima.isFueExpulsado()) {
+                int bx = victima.getXMuerte();
+                int by = victima.getYMuerte();
+                if (bx == 0 && by == 0) { bx = victima.getX(); by = victima.getY(); }
+                int dx = this.x - bx;
+                int dy = this.y - by;
                 if (Math.sqrt(dx * dx + dy * dy) <= 80) {
-                    System.out.println(nombre + " reportó el cuerpo de " + victima.getNombre());
                     estadoJuego.setFaseActual(EstadoJuego.Fase.VOTACION);
                     for (Jugador j : todos) j.resetVoto();
-                    if (estadoJuego.getJugadorLocal() != null)
-                        estadoJuego.getJugadorLocal().resetVoto();
                     if (clienteRed != null) clienteRed.enviarMensaje("REPORTAR:");
                     cooldownReporte = 300;
                     break;
@@ -224,9 +227,7 @@ public class Jugador extends Personaje {
     //  RED
     // ==========================================
 
-    // Throttling: enviar posición máximo cada 33ms (~30 FPS).
-    // Esto balancea una red ligera (para no sobrecargar el servidor) con un movimiento fluido.
-    private static final long INTERVALO_ENVIO_NS = 33_333_333L; // 33ms
+    private static final long INTERVALO_ENVIO_NS = 33_333_333L;
     private long ultimoEnvioNano = 0;
 
     private void enviarPosicionSiCambio() {
@@ -249,11 +250,26 @@ public class Jugador extends Personaje {
     public Color   getColor()            { return color; }
     public String  getNombre()           { return nombre; }
     public boolean isImpostor()          { return impostor; }
+    public void setImpostor(boolean impostor) { this.impostor = impostor; }
     public boolean isVivo()              { return vivo; }
+    public boolean isFueExpulsado()      { return fueExpulsado; }
+    public int getXMuerte()              { return xMuerte; }
+    public int getYMuerte()              { return yMuerte; }
+    public void setXMuerte(int x)        { this.xMuerte = x; }
+    public void setYMuerte(int y)        { this.yMuerte = y; }
+    public int getDireccionMuerte()      { return direccionMuerte; }
+    public String getSombrero()          { return sombrero; }
+    public void setSombrero(String s)    { this.sombrero = s; }
     
-    public void setVivo(boolean vivo) { 
+    public void setVivo(boolean vivo) { setVivo(vivo, false); }
+    
+    public void setVivo(boolean vivo, boolean expulsado) { 
         if (this.vivo && !vivo) {
             this.tiempoInicioMuerte = System.currentTimeMillis();
+            this.fueExpulsado = expulsado;
+            this.xMuerte = this.x;
+            this.yMuerte = this.y;
+            this.direccionMuerte = this.getDireccion();
         }
         this.vivo = vivo; 
     }
@@ -266,11 +282,35 @@ public class Jugador extends Personaje {
     }
 
     public boolean isAtacando() {
-        if (atacando && System.currentTimeMillis() - tiempoInicioAsesinato > 2880) { // 48 frames a ~60ms c/u
-            atacando = false;
-        }
+        if (atacando && System.currentTimeMillis() - tiempoInicioAsesinato > 2880) atacando = false;
         return atacando;
     }
 
     public long getTiempoInicioAsesinato() { return tiempoInicioAsesinato; }
+    public int getCooldownAsesinato()      { return cooldownAsesinato; }
+    public int getCooldownSabotaje()       { return cooldownSabotaje; }
+    public int getCooldownReporte()        { return cooldownReporte; }
+    public int getCooldownVentilacion()    { return cooldownVentilacion; }
+
+    public boolean hayVictimaCerca() {
+        if (!isVivo() || !isImpostor()) return false;
+        for (Jugador victima : estadoJuego.getJugadores()) {
+            if (victima != this && !victima.isImpostor() && victima.isVivo()) {
+                if (Math.sqrt(Math.pow(x - victima.getX(), 2) + Math.pow(y - victima.getY(), 2)) <= 50) return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean hayCuerpoCerca() {
+        if (!isVivo()) return false;
+        for (Jugador victima : estadoJuego.getJugadores()) {
+            if (victima != this && !victima.isVivo() && !victima.isFueExpulsado()) {
+                int bx = victima.getXMuerte() == 0 ? victima.getX() : victima.getXMuerte();
+                int by = victima.getYMuerte() == 0 ? victima.getY() : victima.getYMuerte();
+                if (Math.sqrt(Math.pow(x - bx, 2) + Math.pow(y - by, 2)) <= 80) return true;
+            }
+        }
+        return false;
+    }
 }

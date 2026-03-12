@@ -219,6 +219,12 @@ public class PantallaVotacion {
         // verificar clic izquierdo del ratón (usando la instancia del manejador, no static)
         if (manejadorEntrada.clickIzquierdo) {
             
+            // Los fantasmas no pueden interactuar (ni votar ni abrir el chat)
+            if (jugadorLocal != null && (!jugadorLocal.isVivo() || jugadorLocal.isFueExpulsado())) {
+                manejadorEntrada.clickIzquierdo = false;
+                return;
+            }
+
             // si hizo clic en el icono del chat
             if (areaBotonChat.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY)) {
                 ReproductorMusica.reproducirEfecto("UI_boton.wav");
@@ -329,6 +335,13 @@ public class PantallaVotacion {
         this.ultimoAltoPanel = altoPanel;
         
         Graphics2D g2 = (Graphics2D) g.create();
+        // Activar Antialiasing y calidad máxima para bordes suaves en toda la interfaz
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
         
         // --- pantalla de resultados (cuando ya se votó) ---
         if (mostrandoResultados) {
@@ -434,13 +447,21 @@ public class PantallaVotacion {
             // dibujar estilo botón para la tarjeta del jugador
             dibujarBotonEstiloAmongUs(g2, rect, colorFondo, colorBorde);
             
-            // icono del jugador (cuadrado de su color)
-            g2.setColor(j.getColor());
-            g2.fillRect(rect.x + 15, rect.y + 10, 40, 40);
+            // DIBUJAR SPRITE PERSONALIZADO DEL JUGADOR (En lugar del cuadrado básico)
+            BufferedImage spriteVot = PanelJuego.obtenerSpriteColoreado("sprites/votacion perso/votacion.png", j.getColor(), "votsprite_" + j.getNombre());
+            if (spriteVot != null) {
+                g2.drawImage(spriteVot, rect.x + 10, rect.y + 5, 50, 50, null);
+            } else {
+                g2.setColor(j.getColor());
+                g2.fillRect(rect.x + 15, rect.y + 10, 40, 40);
+            }
             
-            // nombre del jugador
+            // NOMBRE DEL JUGADOR
             Jugador local = estadoJuego.getJugadorLocal();
-            if (j.isImpostor() && local != null && local.isImpostor()) {
+            // Si está muerto, forzamos blanco para que se vea sobre el fondo rojo
+            if (!j.isVivo()) {
+                g2.setColor(Color.WHITE);
+            } else if (j.isImpostor() && local != null && local.isImpostor()) {
                 g2.setColor(Color.RED);
             } else {
                 g2.setColor(Color.WHITE);
@@ -448,15 +469,15 @@ public class PantallaVotacion {
             g2.setFont(cargarFuente(20f));
             g2.drawString(j.getNombre(), rect.x + 70, rect.y + 35);
             
-            // marcar si ya votó (punto verde) sin acentos
+            // MARCAR ESTADO (VOTO / MUERTO)
             if (j.yaVoto()) {
                 g2.setColor(Color.GREEN);
                 g2.fillOval(rect.x + 175, rect.y + 25, 10, 10);
                 g2.setFont(cargarFuente(14f));
                 g2.drawString("VOTO", rect.x + 130, rect.y + 35);
             } else if (!j.isVivo()) {
-                // etiqueta para muertos (con margen ajustado para que no se superponga al ícono)
-                g2.setColor(Color.RED);
+                // Etiqueta para muertos en BLANCO para contraste
+                g2.setColor(Color.WHITE);
                 g2.setFont(cargarFuente(16f));
                 g2.drawString("MUERTO", rect.x + 120, rect.y + 50); 
             }
@@ -517,7 +538,7 @@ public class PantallaVotacion {
         // Area del chat box general (arriba a la izquierda)
         int chatX = 20;
         int chatY = 20;
-        int chatW = 300;
+        int chatW = 450; // ENSANCHADO de 300 a 450 para más espacio
         
         // El boton de chat para toggler la ventana
         areaBotonChat.x = chatX;
@@ -596,12 +617,19 @@ public class PantallaVotacion {
             
             g2.setFont(cargarFuente(22f));
             String txt = manejadorEntrada.entradaChat.toString();
+            
+            // LÍMITE DE CARACTERES: Ajustado a 46
+            if (txt.length() > 34) {
+                txt = txt.substring(0, 46);
+                manejadorEntrada.entradaChat.setLength(46);
+            }
+
             // Cursor parpadeante
             if ((System.currentTimeMillis() / 500) % 2 == 0) txt += "|";
             g2.drawString(txt, chatX + 10, inputY + 25);
             
-            g2.setColor(Color.GRAY);
-            g2.setFont(cargarFuente(14f));
+            g2.setColor(Color.WHITE); // Cambiado a Blanco para máxima visibilidad
+            g2.setFont(cargarFuente(17f)); // Aumentado el tamaño a 17f
             g2.drawString("PRESIONA ENTER PARA ENVIAR O ESC PARA CANCELAR", chatX, inputY + 55);
         }
     }
