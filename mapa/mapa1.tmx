@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.10" tiledversion="1.11.2" orientation="orthogonal" renderorder="right-down" width="90" height="60" tilewidth="32" tileheight="32" infinite="0" nextlayerid="11" nextobjectid="1">
  <tileset firstgid="1" source="Mapa.tsx"/>
- <tileset firstgid="6869" source="Gemini_Generated_Image_6t52ve6t52ve6t52-Photoroom.tsx"/>
- <tileset firstgid="7893" source="Gemini_Generated_Image_ms5i4vms5i4vms5i-Photoroom.tsx"/>
+ <tileset firstgid="6869" source="Tileset_Estructura_Nave.tsx"/>
+ <tileset firstgid="7893" source="Tileset_Suelo.tsx"/>
  <tileset firstgid="8854" source="MesaComedor01 (copy).tsx"/>
- <tileset firstgid="8878" source="Gemini_Generated_Image_ci3jvpci3jvpci3j-Photoroom.tsx"/>
+ <tileset firstgid="8878" source="Tileset_Decoracion.tsx"/>
  <layer id="1" name="suelo" width="90" height="60">
   <data encoding="csv">
 2435,2436,2437,2435,2436,2437,2435,2436,2435,2435,2435,2435,2435,2435,2435,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2536,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2435,2436,2437,2435,2436,

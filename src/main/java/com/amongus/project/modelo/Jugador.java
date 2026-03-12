@@ -127,6 +127,9 @@ public class Jugador extends Personaje {
             if (entrada.accionReportar && cooldownReporte <= 0) {
                 intentarReportar();
             }
+            if (entrada.accionEmergencia && cooldownReporte <= 0) {
+                intentarBotonEmergencia();
+            }
         }
 
         // Movimiento con Delta Time
@@ -203,7 +206,7 @@ public class Jugador extends Personaje {
         }
     }
 
-    private void intentarReportar() {
+    public void intentarReportar() {
         List<Jugador> todos = estadoJuego.getJugadores();
         for (Jugador victima : todos) {
             if (victima != this && !victima.isVivo() && !victima.isFueExpulsado()) {
@@ -213,12 +216,29 @@ public class Jugador extends Personaje {
                 int dx = this.x - bx;
                 int dy = this.y - by;
                 if (Math.sqrt(dx * dx + dy * dy) <= 80) {
-                    estadoJuego.setFaseActual(EstadoJuego.Fase.VOTACION);
-                    for (Jugador j : todos) j.resetVoto();
-                    if (clienteRed != null) clienteRed.enviarMensaje("REPORTAR:");
-                    cooldownReporte = 300;
+                    presionarBotonEmergencia();
                     break;
                 }
+            }
+        }
+    }
+
+    public void presionarBotonEmergencia() {
+        if (!vivo) return;
+        estadoJuego.setFaseActual(EstadoJuego.Fase.VOTACION);
+        for (Jugador j : estadoJuego.getJugadores()) j.resetVoto();
+        if (clienteRed != null) clienteRed.enviarMensaje("REPORTAR:");
+        cooldownReporte = 300;
+    }
+
+    private void intentarBotonEmergencia() {
+        Mapa mapa = estadoJuego.getMapa();
+        if (mapa == null) return;
+        for (Rectangle btn : mapa.getBotones()) {
+            double dist = Math.sqrt(Math.pow(x - btn.x, 2) + Math.pow(y - btn.y, 2));
+            if (dist <= 100) {
+                presionarBotonEmergencia();
+                break;
             }
         }
     }

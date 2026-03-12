@@ -51,7 +51,8 @@ public class PanelJuego extends JPanel {
     private EstadoJuego estadoJuego;
 
     // Rectángulos para los botones del HUD
-    private Rectangle rectKill, rectReport, rectVent, rectSabotage, rectContinuar;
+    private Rectangle rectKill, rectReport, rectVent, rectSabotage, rectContinuar, rectEmergencia;
+    private boolean cercaDeBoton = false;
 
     // ==============================================================
     // SISTEMA DE PALETTE SWAPPING Y ANIMACIÓN (LOS 5 PASOS)
@@ -231,6 +232,14 @@ public class PanelJuego extends JPanel {
                 if (rectReport != null && rectReport.contains(e.getPoint())) { manejadorEntrada.accionReportar = true; clickHUD = true; }
                 if (rectVent != null && rectVent.contains(e.getPoint())) { manejadorEntrada.accionVentilar = true; clickHUD = true; }
                 if (rectSabotage != null && rectSabotage.contains(e.getPoint())) { manejadorEntrada.accionSabotaje = true; clickHUD = true; }
+                if (rectEmergencia != null && rectEmergencia.contains(e.getPoint()) && cercaDeBoton) {
+                    manejadorEntrada.accionEmergencia = true; // Feedback de estado
+                    Jugador local = estadoJuego.getJugadorLocal();
+                    if (local != null && local.isVivo()) {
+                        local.presionarBotonEmergencia();
+                        clickHUD = true;
+                    }
+                }
                 
                 if (clickHUD) {
                     com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
@@ -243,6 +252,7 @@ public class PanelJuego extends JPanel {
                 manejadorEntrada.accionReportar = false;
                 manejadorEntrada.accionVentilar = false;
                 manejadorEntrada.accionSabotaje = false;
+                manejadorEntrada.accionEmergencia = false;
             }
         });
 
@@ -638,7 +648,21 @@ public class PanelJuego extends JPanel {
         g2d.translate(-camX, -camY);
 
         // Capa 1: Mapa
-        if (mapa != null) mapa.render(g, manejadorEntrada.modoDesarrollador);
+        if (mapa != null) {
+            mapa.render(g, manejadorEntrada.modoDesarrollador);
+            
+            // --- BOTONES DE EMERGENCIA (MAPA) ---
+            cercaDeBoton = false;
+            if (local != null) {
+                for (Rectangle btnRect : mapa.getBotones()) {
+                    // Proximidad (100 píxeles)
+                    double dist = Math.sqrt(Math.pow(local.getX() - btnRect.x, 2) + Math.pow(local.getY() - btnRect.y, 2));
+                    if (dist < 100) {
+                        cercaDeBoton = true;
+                    }
+                }
+            }
+        }
 
         // Capa 1.5: cinemática de asesinato (solo para el atacante o víctima)
         boolean enCinematica = false;
@@ -747,8 +771,17 @@ public class PanelJuego extends JPanel {
         rectReport = new Rectangle(w - (btnSize + gap) * 2, h - btnSize - gap, btnSize, btnSize);
         rectVent = new Rectangle(w - btnSize - gap, h - (btnSize + gap) * 2, btnSize, btnSize);
         rectSabotage = new Rectangle(w - (btnSize + gap) * 2, h - (btnSize + gap) * 2, btnSize, btnSize);
+        
+        int emergencyX = w - (btnSize + gap) * 2 + (local.isImpostor() ? 40 : 20);
+        int emergencyY = h - (btnSize + gap) * 2 - gap - (btnSize / 2) - (local.isImpostor() ? 20 : 10);
+        rectEmergencia = new Rectangle(emergencyX, emergencyY, btnSize, btnSize);
 
         if (local.isVivo()) {
+            // Botón Emergencia (Solo si está cerca)
+            if (cercaDeBoton) {
+                dibujarBotonAccion(g, "boton/botnhud/boton-hud.png", rectEmergencia, manejadorEntrada.accionEmergencia, true, 0);
+            }
+            
             // Botón Reportar (Siempre visible para tripulantes y impostores vivos)
             boolean puedeReportar = local.hayCuerpoCerca();
             int cdReporte = local.getCooldownReporte();
@@ -784,9 +817,12 @@ public class PanelJuego extends JPanel {
         }
 
         if (presionado && habilitado) {
-            // Animación: reducir un poco el tamaño al presionar
-            int offset = 8;
-            g2.drawImage(img, rect.x + offset, rect.y + offset, rect.width - offset * 2, rect.height - offset * 2, null);
+            // Compensación de tamaño: 10% menor y centrado para simular profundidad
+            int newW = (int)(rect.width * 0.9);
+            int newH = (int)(rect.height * 0.9);
+            int offsetX = (rect.width - newW) / 2;
+            int offsetY = (rect.height - newH) / 2;
+            g2.drawImage(img, rect.x + offsetX, rect.y + offsetY, newW, newH, null);
         } else {
             g2.drawImage(img, rect.x, rect.y, rect.width, rect.height, null);
         }

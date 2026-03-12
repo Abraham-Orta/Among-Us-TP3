@@ -30,6 +30,7 @@ public class ManejadorEntrada extends KeyAdapter {
     public boolean accionVentilar = false; // E → Alcantarilla
     public boolean accionReportar = false; // R → Reportar cadáver
     public boolean accionSabotaje = false; // H → Sabotaje de luces
+    public boolean accionEmergencia = false; // HUD → Botón de Emergencia
 
     // --- MODO DESARROLLADOR ---
     public boolean modoDesarrollador = false; // F3 → ver hitboxes
@@ -155,12 +156,11 @@ public class ManejadorEntrada extends KeyAdapter {
             accionSabotaje = true;
         }
 
-        // Depuración: forzar fases (útil en PruebaDirecta)
+        // Acciones: Emergencia
         if (c == KeyEvent.VK_V) {
-            estadoJuego.setFaseActual(EstadoJuego.Fase.VOTACION);
-            if (estadoJuego.getJugadorLocal() != null)
-                estadoJuego.getJugadorLocal().resetVoto();
+            accionEmergencia = true;
         }
+
         if (c == KeyEvent.VK_J) {
             estadoJuego.setFaseActual(EstadoJuego.Fase.JUGANDO);
         }
@@ -188,5 +188,6 @@ public class ManejadorEntrada extends KeyAdapter {
         if (c == KeyEvent.VK_E) accionVentilar = false;
         if (c == KeyEvent.VK_R) accionReportar = false;
         if (c == KeyEvent.VK_H) accionSabotaje = false;
+        if (c == KeyEvent.VK_V) accionEmergencia = false;
     }
 }

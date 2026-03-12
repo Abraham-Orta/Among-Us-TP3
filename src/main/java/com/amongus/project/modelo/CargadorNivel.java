@@ -24,10 +24,12 @@ public class CargadorNivel {
     // Lista para guardar las áreas donde el jugador chocará
     private List<Rectangle2D.Double> colisiones;
     private List<Rectangle2D.Double> alcantarillas;
+    private List<Rectangle2D.Double> botonesEmergencia;
 
     public CargadorNivel(String rutaArchivo) {
         colisiones = new ArrayList<>();
         alcantarillas = new ArrayList<>();
+        botonesEmergencia = new ArrayList<>();
         cargarArchivo(rutaArchivo);
     }
 
@@ -105,6 +107,22 @@ public class CargadorNivel {
                     }
                     System.out.println("Cargadas " + colisiones.size() + " zonas de colisión.");
                 }
+                
+                else if (tipoCapa.equals("objectgroup") && nombreCapa.equals("boton")) {
+                    JSONArray objects = layer.getJSONArray("objects");
+                    
+                    for (int j = 0; j < objects.length(); j++) {
+                        JSONObject obj = objects.getJSONObject(j);
+                        
+                        double objX = obj.getDouble("x");
+                        double objY = obj.getDouble("y");
+                        double objWidth = obj.getDouble("width");
+                        double objHeight = obj.getDouble("height");
+                        
+                        botonesEmergencia.add(new Rectangle2D.Double(objX, objY, objWidth, objHeight));
+                    }
+                    System.out.println("Cargados " + botonesEmergencia.size() + " botones de emergencia.");
+                }
             }
         } catch (Exception e) {
             System.out.println("Error procesando el JSON: " + e.getMessage());
@@ -118,4 +136,5 @@ public class CargadorNivel {
     public int getTileWidth() { return tileWidth; }
     public int getTileHeight() { return tileHeight; }
     public List<Rectangle2D.Double> getAlcantarillas() { return alcantarillas; }
+    public List<Rectangle2D.Double> getBotonesEmergencia() { return botonesEmergencia; }
 }

@@ -28,6 +28,7 @@ public class Mapa {
     private int ancho, alto;
     private List<Rectangle> obstaculos;
     private List<Rectangle> alcantarillas; // Vías de acceso rápido (vents)
+    private List<Rectangle> botones;
     private Image imagenFondo;
 
     /**
@@ -39,6 +40,7 @@ public class Mapa {
         this.alto          = 1920;
         this.obstaculos    = new ArrayList<>();
         this.alcantarillas = new ArrayList<>();
+        this.botones       = new ArrayList<>();
         cargarImagenFondo(nombreArchivoTmj);
         crearMapaPrueba();
         
@@ -65,6 +67,15 @@ public class Mapa {
                 (int) rectDouble.height
             );
             this.alcantarillas.add(rectNormal);
+        }
+        for (java.awt.geom.Rectangle2D.Double rectDouble : cargador.getBotonesEmergencia()) {
+            Rectangle rectNormal = new Rectangle(
+                (int) rectDouble.x, 
+                (int) rectDouble.y, 
+                (int) rectDouble.width, 
+                (int) rectDouble.height
+            );
+            this.botones.add(rectNormal);
         }
       
     }
@@ -173,6 +184,7 @@ public class Mapa {
 
     public List<Rectangle> getObstaculos()    { return obstaculos; }
     public List<Rectangle> getAlcantarillas() { return alcantarillas; }
+    public List<Rectangle> getBotones()       { return botones; }
     public int getAncho()                      { return ancho; }
     public int getAlto()                       { return alto; }
 }
