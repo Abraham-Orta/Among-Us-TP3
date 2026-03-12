@@ -1,5 +1,6 @@
 package com.amongus.project.modelo;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,17 +28,17 @@ public class EstadoJuego {
     // GANADOR DE LA PARTIDA (Se asigna al finalizar)
     private String mensajeGanador = "";
 
-    public EstadoJuego() {
+    public EstadoJuego() throws IOException {
         jugadores = new ArrayList<>();
         faseActual = Fase.MENU;
-        mapa = new Mapa("mapa1.png");
+        mapa = new Mapa("mapa1.tmj");
     }
     
     // Getters y Setters para sabotajes
     public boolean areLucesSaboteadas() { return lucesSaboteadas; }
-    public void setLucesSaboteadas(boolean estado) { 
+    public void setLucesSaboteadas(boolean estado) {
         if (this.lucesSaboteadas == estado) return; // solo actuar si el estado cambia realmente
-        this.lucesSaboteadas = estado; 
+        this.lucesSaboteadas = estado;
         if (estado) {
             com.amongus.project.vista.ReproductorMusica.manejarAlarma("Alarm_sabotaje.wav", true);
         } else {
@@ -63,16 +64,16 @@ public class EstadoJuego {
     }
 
     public Fase getFaseActual() { return faseActual; }
-    public void setFaseActual(Fase f) { 
+    public void setFaseActual(Fase f) {
         if (this.faseActual != f && f == Fase.VOTACION) {
             com.amongus.project.vista.ReproductorMusica.reproducirEfecto("reporte.wav");
         }
 
-        this.faseActual = f; 
-    }    
+        this.faseActual = f;
+    }
     public Mapa getMapa() { return mapa; }
     public void setMapa(Mapa mapa) { this.mapa = mapa; }
-    
+
     public String getMensajeGanador() { return mensajeGanador; }
     public void setMensajeGanador(String mensajeGanador) { this.mensajeGanador = mensajeGanador; }
 }

@@ -3,6 +3,7 @@ package com.amongus.project;
 import com.amongus.project.red.Cliente;
 import com.amongus.project.red.Servidor;
 import com.amongus.project.vista.PantallaLobby;
+import java.io.IOException;
 import javax.swing.SwingUtilities;
 
 /**
@@ -66,7 +67,12 @@ public class PruebaDirecta {
 
             // Crear y mostrar el lobby en el hilo de Swing
             SwingUtilities.invokeLater(() -> {
-                PantallaLobby lobby = new PantallaLobby(nombre, esHost, cliente);
+                PantallaLobby lobby = null;
+                try {
+                    lobby = new PantallaLobby(nombre, esHost, cliente);
+                } catch (IOException ex) {
+                    System.getLogger(PruebaDirecta.class.getName()).log(System.Logger.Level.ERROR, (String) null, ex);
+                }
                 lobby.setVisible(true);
 
                 // Presentarse al servidor (el servidor responde con LISTA_JUGADORES:)
