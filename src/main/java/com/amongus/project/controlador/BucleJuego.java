@@ -1,5 +1,9 @@
 package com.amongus.project.controlador;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+import javax.swing.SwingUtilities;
 import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
 import com.amongus.project.vista.PanelJuego;
@@ -25,6 +29,13 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private final int  FPS            = 60;
     private final long TIEMPO_OBJETIVO = 1_000_000_000L / FPS;
 
+    // Fix #7: ScheduledExecutorService para las muertes (no crear un thread por muerte)
+    private static final ScheduledExecutorService sfxExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "SfxDelayThread");
+        t.setDaemon(true);
+        return t;
+    });
+
     /** Constructor para pruebas locales sin red */
     public BucleJuego(PanelJuego panelJuego) {
         this.panelJuego = panelJuego;
@@ -45,7 +56,27 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     // =====================================
     @Override
     public void onMensajeRecibido(String mensaje) {
-        if (mensaje.startsWith("MOVER:")) {
+        if (mensaje.startsWith("BATCH_MOVER:")) {
+            // Fix servidor #2: Desempaquetar batch de posiciones.
+            // Formato: BATCH_MOVER:nombre1,x1,y1|nombre2,x2,y2|...
+            try {
+                String[] entradas = mensaje.substring(12).split("\\|");
+                for (String entrada : entradas) {
+                    String[] p = entrada.split(",");
+                    if (p.length < 3) continue;
+                    String nombre = p[0];
+                    int nx = Integer.parseInt(p[1]);
+                    int ny = Integer.parseInt(p[2]);
+                    // Ignorar nuestro propio movimiento (ya lo manejamos localmente)
+                    if (estado.getJugadorLocal() != null && nombre.equals(estado.getJugadorLocal().getNombre())) continue;
+                    for (Jugador j : estado.getJugadores()) {
+                        if (j.getNombre().equals(nombre)) { j.recibirPosicionRed(nx, ny); break; }
+                    }
+                }
+            } catch (Exception e) {
+                System.err.println("Error procesando BATCH_MOVER: " + mensaje);
+            }
+        } else if (mensaje.startsWith("MOVER:")) {
             try {
                 String[] p = mensaje.substring(6).split(",");
                 String nombre = p[0];
@@ -82,13 +113,10 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                     // musica de fondo para la cinematica con el volumen bajito (-10 decibelios)
                     com.amongus.project.vista.ReproductorMusica.reproducirEfectoConVolumen("impostor_killMusic.wav", -10.0f);
                     
-                    // sonido de ataque "kill.wav" sincronizado con los frames (esperamos 480 milisegundos)
-                    new Thread(() -> {
-                        try {
-                            Thread.sleep(480);
-                            com.amongus.project.vista.ReproductorMusica.reproducirEfecto("Kill.wav");
-                        } catch (InterruptedException e) {}
-                    }).start();
+                    // Fix #7: programar el sonido en el scheduler en vez de crear new Thread().start()
+                    // Fix #7: programar el sonido en el scheduler en vez de crear new Thread().start()
+                    sfxExecutor.schedule(() -> com.amongus.project.vista.ReproductorMusica.reproducirEfecto("Kill.wav"), 
+                        480, TimeUnit.MILLISECONDS);
                 }
 
                 for (Jugador j : estado.getJugadores()) {
@@ -338,6 +366,6 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     }
 
     private void renderizar() {
-        if (panelJuego != null) panelJuego.repaint();
+        if (panelJuego != null) SwingUtilities.invokeLater(panelJuego::repaint);
     }
 }

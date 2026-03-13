@@ -14,7 +14,11 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.BasicStroke;
 import java.awt.AlphaComposite;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Area;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -278,14 +282,14 @@ public class PanelJuego extends JPanel {
         }
 
         Graphics2D g2d = (Graphics2D) g;
-        // Activar Antialiasing y calidad máxima para bordes suaves en dibujos, imágenes y texto
-        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        // Fix #3: Usar velocidad en contexto global (60fps). Solo antialiasing para texto y contornos.
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING,       RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,  RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g2d.setRenderingHint(RenderingHints.KEY_RENDERING,          RenderingHints.VALUE_RENDER_SPEED);
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION,      RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR);
         g2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
-        g2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
-        g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+        g2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING,    RenderingHints.VALUE_COLOR_RENDER_SPEED);
+        g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL,     RenderingHints.VALUE_STROKE_DEFAULT);
 
         // --- PANTALLA DE VICTORIA (FINALIZADO) ---
         if (fase == EstadoJuego.Fase.FINALIZADO) {
@@ -645,17 +649,18 @@ public class PanelJuego extends JPanel {
             return;
         }
 
+        // Capa 1: Mapa (Solo dibujado dentro del "Lente" visual)
+        if (mapa != null) {
+            mapa.render(g, manejadorEntrada.modoDesarrollador, camX, camY, getWidth(), getHeight());
+        }
+
         g2d.translate(-camX, -camY);
 
-        // Capa 1: Mapa
+        // Detección de botón de emergencia cercano (en coordenadas de mapa)
         if (mapa != null) {
-            mapa.render(g, manejadorEntrada.modoDesarrollador);
-            
-            // --- BOTONES DE EMERGENCIA (MAPA) ---
             cercaDeBoton = false;
             if (local != null) {
                 for (Rectangle btnRect : mapa.getBotones()) {
-                    // Proximidad (100 píxeles)
                     double dist = Math.sqrt(Math.pow(local.getX() - btnRect.x, 2) + Math.pow(local.getY() - btnRect.y, 2));
                     if (dist < 100) {
                         cercaDeBoton = true;
@@ -739,9 +744,53 @@ public class PanelJuego extends JPanel {
             dibujarTripulante(g, local);
         }
 
-        // Capa 3: Niebla de guerra
+        // Capa 3: Oscuridad externa al rango visual.
+        // Se dibuja un Área restando el círculo de luz de la ventana para oscurecer eficientemente 
+        // y se elimina la necesidad del costoso RadialGradientPaint de dibujarCampoVisual.
         if (local != null && mapa != null) {
-            dibujarCampoVisual(g2d, local, mapa.getAncho(), mapa.getAlto());
+            float radioLuz;
+            if (local.isImpostor()) {
+                radioLuz = 350.0f;
+            } else {
+                radioLuz = estadoJuego.areLucesSaboteadas() ? 50.0f : 180.0f;
+            }
+
+            g2d.translate(camX, camY); // restaurar a coordenadas de pantalla UI
+            
+            // Construir la máscara negra
+            Area pantallaCompleta = new Area(new Rectangle(0, 0, getWidth(), getHeight()));
+            
+            int luzRealX = local.getX() - camX + 15;
+            int luzRealY = local.getY() - camY + 20;
+
+            Shape circuloLuz = new Ellipse2D.Float(
+                luzRealX - radioLuz, 
+                luzRealY - radioLuz, 
+                radioLuz * 2, 
+                radioLuz * 2
+            );
+            
+            pantallaCompleta.subtract(new Area(circuloLuz));
+
+            // Dibujar la oscuridad exterior
+            g2d.setColor(Color.BLACK);
+            g2d.fill(pantallaCompleta);
+            
+            // Agregamos un borde suave (penumbra) en el arco de visión
+            Graphics2D g2soft = (Graphics2D) g.create();
+            java.awt.RadialGradientPaint bordeDifuminado = new java.awt.RadialGradientPaint(
+                new Point2D.Float(luzRealX, luzRealY), radioLuz,
+                new float[]{0.8f, 1.0f},
+                new Color[]{
+                    new Color(0, 0, 0, 0),
+                    new Color(0, 0, 0, 255)
+                }
+            );
+            g2soft.setPaint(bordeDifuminado);
+            g2soft.fill(circuloLuz);
+            g2soft.dispose();
+            
+            g2d.translate(-camX, -camY); // volver al estado normal
         }
 
         g2d.translate(camX, camY);
@@ -777,27 +826,33 @@ public class PanelJuego extends JPanel {
         rectEmergencia = new Rectangle(emergencyX, emergencyY, btnSize, btnSize);
 
         if (local.isVivo()) {
-            // Botón Emergencia (Solo si está cerca)
-            if (cercaDeBoton) {
-                dibujarBotonAccion(g, "boton/botnhud/boton-hud.png", rectEmergencia, manejadorEntrada.accionEmergencia, true, 0);
-            }
-            
-            // Botón Reportar (Siempre visible para tripulantes y impostores vivos)
-            boolean puedeReportar = local.hayCuerpoCerca();
-            int cdReporte = local.getCooldownReporte();
-            dibujarBotonAccion(g, "Reportar_boton.png", rectReport, manejadorEntrada.accionReportar, puedeReportar && cdReporte <= 0, cdReporte);
+            // Un solo contexto Graphics2D compartido para todos los botones del HUD
+            Graphics2D g2hud = (Graphics2D) g.create();
+            try {
+                // Botón Emergencia (Solo si está cerca)
+                if (cercaDeBoton) {
+                    dibujarBotonAccion(g2hud, "boton/botnhud/boton-hud.png", rectEmergencia, manejadorEntrada.accionEmergencia, true, 0);
+                }
+                
+                // Botón Reportar (Siempre visible para tripulantes y impostores vivos)
+                boolean puedeReportar = local.hayCuerpoCerca();
+                int cdReporte = local.getCooldownReporte();
+                dibujarBotonAccion(g2hud, "Reportar_boton.png", rectReport, manejadorEntrada.accionReportar, puedeReportar && cdReporte <= 0, cdReporte);
 
-            if (local.isImpostor()) {
-                // Botones exclusivos de Impostor
-                boolean puedeMatar = local.hayVictimaCerca();
-                int cdMatar = local.getCooldownAsesinato();
-                dibujarBotonAccion(g, "botonkill.png", rectKill, manejadorEntrada.accionMatar, puedeMatar && cdMatar <= 0, cdMatar);
-                
-                int cdVent = local.getCooldownVentilacion();
-                dibujarBotonAccion(g, "Ventana_boton.png", rectVent, manejadorEntrada.accionVentilar, cdVent <= 0, cdVent); 
-                
-                int cdSabotaje = local.getCooldownSabotaje();
-                dibujarBotonAccion(g, "Sabotaje_boton.png", rectSabotage, manejadorEntrada.accionSabotaje, cdSabotaje <= 0, cdSabotaje);
+                if (local.isImpostor()) {
+                    // Botones exclusivos de Impostor
+                    boolean puedeMatar = local.hayVictimaCerca();
+                    int cdMatar = local.getCooldownAsesinato();
+                    dibujarBotonAccion(g2hud, "botonkill.png", rectKill, manejadorEntrada.accionMatar, puedeMatar && cdMatar <= 0, cdMatar);
+                    
+                    int cdVent = local.getCooldownVentilacion();
+                    dibujarBotonAccion(g2hud, "Ventana_boton.png", rectVent, manejadorEntrada.accionVentilar, cdVent <= 0, cdVent);
+                    
+                    int cdSabotaje = local.getCooldownSabotaje();
+                    dibujarBotonAccion(g2hud, "Sabotaje_boton.png", rectSabotage, manejadorEntrada.accionSabotaje, cdSabotaje <= 0, cdSabotaje);
+                }
+            } finally {
+                g2hud.dispose(); // Un solo dispose para todos los botones
             }
         }
     }
@@ -805,19 +860,19 @@ public class PanelJuego extends JPanel {
     /**
      * Dibuja un botón individual con animación de pulsación, filtro gris si no está habilitado y contador de cooldown
      */
-    private void dibujarBotonAccion(Graphics g, String imgName, Rectangle rect, boolean presionado, boolean habilitado, int cooldown) {
+    //  Recibe Graphics2D directamente (el contexto compartido del HUD). No hace create()/dispose().
+    private void dibujarBotonAccion(Graphics2D g2, String imgName, Rectangle rect, boolean presionado, boolean habilitado, int cooldown) {
         Image img = obtenerImagenFija(imgName);
         if (img == null) return;
 
-        Graphics2D g2 = (Graphics2D) g.create();
+        // Guardar el composite original para restaurarlo al final
+        java.awt.Composite compositeOriginal = g2.getComposite();
 
         if (!habilitado) {
-            // Hacer el botón medio transparente si no se puede usar
             g2.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.4f));
         }
 
         if (presionado && habilitado) {
-            // Compensación de tamaño: 10% menor y centrado para simular profundidad
             int newW = (int)(rect.width * 0.9);
             int newH = (int)(rect.height * 0.9);
             int offsetX = (rect.width - newW) / 2;
@@ -827,66 +882,22 @@ public class PanelJuego extends JPanel {
             g2.drawImage(img, rect.x, rect.y, rect.width, rect.height, null);
         }
 
-        g2.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1.0f));
+        g2.setComposite(compositeOriginal); // restaurar, no crear instancia extra
 
-        // Dibujar el número del cooldown si es mayor a 0
         if (cooldown > 0) {
             String textoCd = String.valueOf((int) Math.ceil(cooldown / 60.0));
             g2.setFont(cargarFuente(35f));
             FontMetrics fm = g2.getFontMetrics();
             int tx = rect.x + (rect.width - fm.stringWidth(textoCd)) / 2;
             int ty = rect.y + ((rect.height - fm.getHeight()) / 2) + fm.getAscent();
-            
             g2.setColor(Color.BLACK);
-            g2.drawString(textoCd, tx + 2, ty + 2); // Sombra
+            g2.drawString(textoCd, tx + 2, ty + 2);
             g2.setColor(Color.WHITE);
             g2.drawString(textoCd, tx, ty);
         }
-        
-        g2.dispose();
     }
 
-    // Caché para la niebla de guerra — evita recrear el gradiente 60 veces/segundo
-    private RadialGradientPaint gradCache;
-    private float gradCacheX, gradCacheY, gradCacheRadio;
-
-    private void dibujarCampoVisual(Graphics2D g2d, Jugador local, int anchoMapa, int altoMapa) {
-        float radio;
-        if (local.isImpostor()) {
-            radio = 350.0f;
-        } else {
-            radio = estadoJuego.areLucesSaboteadas() ? 50.0f : 180.0f;
-        }
-        if (radio <= 0) radio = 1.0f;
-
-        float cx = local.getX() + 15;
-        float cy = local.getY() + 20;
-
-        // Solo recrear el gradiente si cambió la posición o el radio
-        if (gradCache == null || cx != gradCacheX || cy != gradCacheY || radio != gradCacheRadio) {
-            gradCache = new RadialGradientPaint(
-                new Point2D.Float(cx, cy), radio,
-                new float[]{0.0f, 0.7f, 1.0f},
-                new Color[]{
-                    new Color(0, 0, 0,   0),
-                    new Color(0, 0, 0, 120),
-                    new Color(0, 0, 0, 255)
-                }
-            );
-            gradCacheX = cx;
-            gradCacheY = cy;
-            gradCacheRadio = radio;
-        }
-
-        Paint original = g2d.getPaint();
-        g2d.setPaint(gradCache);
-        // Pintar un área lo suficientemente grande para cubrir la ventana
-        // sin importar si el jugador está en el borde del mapa
-        int rectX = (int)(cx - getWidth());
-        int rectY = (int)(cy - getHeight());
-        g2d.fillRect(rectX, rectY, getWidth() * 2, getHeight() * 2);
-        g2d.setPaint(original);
-    }
+    // Método dibujarCampoVisual() eliminado por la optimización de Clipping Circular
 
     private void dibujarTripulante(Graphics g, Jugador j) {
         Jugador local = estadoJuego.getJugadorLocal();
@@ -997,9 +1008,9 @@ public class PanelJuego extends JPanel {
         BufferedImage spriteActual = obtenerSpriteColoreado(rutaMolde, j.getColor(), claveCache);
 
         Graphics2D g2d = (Graphics2D) g.create();
-        // Aseguramos suavizado de bordes e interpolación de alta calidad para los personajes
+        // BILINEAR es suficiente para sprites de 40x50px escalados — BICUBIC era innecesariamente caro
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
         if (spriteActual != null) {
             if (dir == 1) {

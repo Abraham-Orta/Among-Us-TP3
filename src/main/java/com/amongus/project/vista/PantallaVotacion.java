@@ -63,6 +63,14 @@ public class PantallaVotacion {
     private int letrasMostradas = 0;
     private int ticksParaLetra = 0; // contador para controlar la velocidad de la máquina de escribir
 
+    // Fix #4: Caché de recursos gráficos frecuentes para evitar de 15 a 150 allocations por frame
+    private static final BasicStroke STROKE_BOTON = new BasicStroke(3);
+    private static final Color COLOR_BG_ESPACIO = new Color(5, 5, 10);
+    private static final Color COLOR_VELO = new Color(0, 0, 0, 100);
+    private static final Color COLOR_BOTON_MUERTO = new Color(150, 0, 0, 150);
+    private static final Color COLOR_BOTON_HOVER = new Color(60, 60, 60, 150);
+    private static final Color COLOR_BOTON_NORMAL = new Color(0, 0, 0, 150);
+
     // --- variables para el efecto parallax (estrellas) ---
     private List<Estrella> estrellas;
     private Random random = new Random();
@@ -72,12 +80,17 @@ public class PantallaVotacion {
         float x, y;
         float velocidad;
         int tamano;
+        Color colorCache; // Fix #9: evitar 150 new Color() por frame
 
         Estrella(int ancho, int alto) {
             x = random.nextInt(ancho > 0 ? ancho : 800);
             y = random.nextInt(alto > 0 ? alto : 600);
             tamano = random.nextInt(3) + 1; // tamaño entre 1 y 3
             velocidad = tamano * 0.5f; // las estrellas más grandes se mueven más rápido
+            
+            int alpha = 100 + (tamano * 50);
+            if (alpha > 255) alpha = 255;
+            colorCache = new Color(255, 255, 255, alpha);
         }
 
         void actualizar(int ancho, int alto) {
@@ -89,10 +102,7 @@ public class PantallaVotacion {
         }
 
         void dibujar(Graphics2D g2) {
-            // color blanco con opacidad según el tamaño (las pequeñas son más tenues)
-            int alpha = 100 + (tamano * 50);
-            if (alpha > 255) alpha = 255;
-            g2.setColor(new Color(255, 255, 255, alpha));
+            g2.setColor(colorCache);
             g2.fillRect((int)x, (int)y, tamano, tamano);
         }
     }
@@ -272,32 +282,47 @@ public class PantallaVotacion {
         }
     }
     
+    // Fix #6: caché de posiciones de jugadores, calculado 1 vez en vez de ~10 veces/frame
+    private List<Rectangle> cacheRectJugadores = new ArrayList<>();
+    private int cacheJugadoresNum = -1;
+
     /**
      * calcula la posición de la tarjeta de un jugador para que quede centrado en pantalla.
      */
     private Rectangle obtenerRectanguloJugador(int index, int totalJugadores, int anchoPanel, int altoPanel) {
-        int columnas = Math.min(3, totalJugadores); // máximo 3 columnas para no saturar
-        if (columnas == 0) columnas = 1;
-        int filas = (int) Math.ceil((double) totalJugadores / columnas);
+        if (cacheJugadoresNum != totalJugadores || ultimoAnchoPanel != anchoPanel || ultimoAltoPanel != altoPanel || cacheRectJugadores.isEmpty()) {
+            cacheRectJugadores.clear();
+            int columnas = Math.min(3, totalJugadores); // máximo 3 columnas para no saturar
+            if (columnas == 0) columnas = 1;
+            int filas = (int) Math.ceil((double) totalJugadores / columnas);
+            
+            int tarjetaAncho = 200;
+            int tarjetaAlto = 60;
+            int gapX = 30;
+            int gapY = 30;
+            
+            int totalAnchoGrid = columnas * tarjetaAncho + (columnas - 1) * gapX;
+            int totalAltoGrid = filas * tarjetaAlto + (filas - 1) * gapY;
+            
+            int startX = (anchoPanel - totalAnchoGrid) / 2;
+            int startY = (altoPanel - totalAltoGrid) / 2 - 20; // un poco más arriba para dejar espacio al skip
+            
+            for (int i = 0; i < totalJugadores; i++) {
+                int fila = i / columnas;
+                int col = i % columnas;
+                int x = startX + col * (tarjetaAncho + gapX);
+                int y = startY + fila * (tarjetaAlto + gapY);
+                cacheRectJugadores.add(new Rectangle(x, y, tarjetaAncho, tarjetaAlto));
+            }
+            cacheJugadoresNum = totalJugadores;
+            ultimoAnchoPanel = anchoPanel;
+            ultimoAltoPanel = altoPanel;
+        }
         
-        int tarjetaAncho = 200;
-        int tarjetaAlto = 60;
-        int gapX = 30;
-        int gapY = 30;
-        
-        int totalAnchoGrid = columnas * tarjetaAncho + (columnas - 1) * gapX;
-        int totalAltoGrid = filas * tarjetaAlto + (filas - 1) * gapY;
-        
-        int startX = (anchoPanel - totalAnchoGrid) / 2;
-        int startY = (altoPanel - totalAltoGrid) / 2 - 20; // un poco más arriba para dejar espacio al skip
-        
-        int fila = index / columnas;
-        int col = index % columnas;
-        
-        int x = startX + col * (tarjetaAncho + gapX);
-        int y = startY + fila * (tarjetaAlto + gapY);
-        
-        return new Rectangle(x, y, tarjetaAncho, tarjetaAlto);
+        if (index >= 0 && index < cacheRectJugadores.size()) {
+            return cacheRectJugadores.get(index);
+        }
+        return new Rectangle(0, 0, 200, 60); // Failsafe
     }
     
     /**
@@ -317,13 +342,11 @@ public class PantallaVotacion {
      * dibuja un botón con el estilo del juego (esquinas redondeadas y borde blanco o gris)
      */
     private void dibujarBotonEstiloAmongUs(Graphics2D g2, Rectangle rect, Color bgColor, Color borderColor) {
-        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        
         g2.setColor(bgColor);
         g2.fillRoundRect(rect.x, rect.y, rect.width, rect.height, 30, 30);
         
         g2.setColor(borderColor);
-        g2.setStroke(new BasicStroke(3));
+        g2.setStroke(STROKE_BOTON); // Usar caché
         g2.drawRoundRect(rect.x + 1, rect.y + 1, rect.width - 3, rect.height - 3, 30, 30);
     }
 
@@ -335,18 +358,18 @@ public class PantallaVotacion {
         this.ultimoAltoPanel = altoPanel;
         
         Graphics2D g2 = (Graphics2D) g.create();
-        // Activar Antialiasing y calidad máxima para bordes suaves en toda la interfaz
+        // Fix #3: RenderingHints optimizados para 60fps en vez de la máxima calidad anterior.
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY);
-        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY);
+        g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_SPEED);
+        g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g2.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_SPEED);
+        g2.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_SPEED);
         
         // --- pantalla de resultados (cuando ya se votó) ---
         if (mostrandoResultados) {
             // fondo de espacio negro profundo para resaltar las estrellas
-            g2.setColor(new Color(5, 5, 10));
+            g2.setColor(COLOR_BG_ESPACIO);
             g2.fillRect(0, 0, anchoPanel, altoPanel);
 
             // dibujar estrellas parallax
@@ -403,7 +426,7 @@ public class PantallaVotacion {
             g2.drawImage(bgVotacion, 0, 0, anchoPanel, altoPanel, null);
         } else {
             // si no hay imagen, usar el fondo de estrellas
-            g2.setColor(new Color(5, 5, 10));
+            g2.setColor(COLOR_BG_ESPACIO);
             g2.fillRect(0, 0, anchoPanel, altoPanel);
             for (Estrella e : estrellas) {
                 e.dibujar(g2);
@@ -411,7 +434,7 @@ public class PantallaVotacion {
         }
         
         // velo oscuro encima del fondo para mejorar lectura
-        g2.setColor(new Color(0, 0, 0, 100));
+        g2.setColor(COLOR_VELO);
         g2.fillRect(0, 0, anchoPanel, altoPanel);
 
         g2.setColor(Color.WHITE);
@@ -434,13 +457,13 @@ public class PantallaVotacion {
             Color colorFondo;
             Color colorBorde;
             if (!j.isVivo()) {
-                colorFondo = new Color(150, 0, 0, 150); // rojo oscuro transparente si está muerto
+                colorFondo = COLOR_BOTON_MUERTO; // rojo oscuro transparente si está muerto
                 colorBorde = new Color(100, 100, 100);
             } else if (hover) {
-                colorFondo = new Color(60, 60, 60, 150); // gris transparente si pasas el ratón
+                colorFondo = COLOR_BOTON_HOVER; // gris transparente si pasas el ratón
                 colorBorde = Color.WHITE; // borde blanco brillante
             } else {
-                colorFondo = new Color(0, 0, 0, 150); // negro transparente por defecto
+                colorFondo = COLOR_BOTON_NORMAL; // negro transparente por defecto
                 colorBorde = Color.LIGHT_GRAY; // borde gris claro
             }
             
@@ -491,7 +514,7 @@ public class PantallaVotacion {
 
         // --- botón de skip vote ---
         boolean hoverSkip = botonSkip.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY);
-        Color colorFondoSkip = hoverSkip ? new Color(60, 60, 60, 150) : new Color(0, 0, 0, 150);
+        Color colorFondoSkip = hoverSkip ? COLOR_BOTON_HOVER : COLOR_BOTON_NORMAL;
         Color colorBordeSkip = hoverSkip ? Color.WHITE : Color.LIGHT_GRAY;
         
         dibujarBotonEstiloAmongUs(g2, botonSkip, colorFondoSkip, colorBordeSkip);
@@ -545,7 +568,8 @@ public class PantallaVotacion {
         areaBotonChat.y = chatY;
         
         boolean hoverChatBtn = areaBotonChat.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY);
-        Color chatBtnBg = hoverChatBtn ? new Color(60, 60, 60, 200) : new Color(30, 30, 30, 200);
+        // Fix #4: Reutilizar constantes de color normal/hover del botón
+        Color chatBtnBg = hoverChatBtn ? COLOR_BOTON_HOVER : COLOR_BOTON_NORMAL;
         dibujarBotonEstiloAmongUs(g2, areaBotonChat, chatBtnBg, Color.WHITE);
         
         // icono de chat aproximado
@@ -575,6 +599,14 @@ public class PantallaVotacion {
         Jugador local = estadoJuego.getJugadorLocal();
         boolean localIsImp = local != null && local.isImpostor();
         
+        // Fix #5: Mapeo O(1) de impostores en el chat para no hacer 75 comparaciones/frame
+        java.util.Set<String> impostoresSet = new java.util.HashSet<>();
+        if (localIsImp) {
+            for (Jugador j : estadoJuego.getJugadores()) {
+                if (j.isImpostor()) impostoresSet.add(j.getNombre());
+            }
+        }
+        
         for (String msj : historialChat) {
             String autor = "";
             String contenido = msj;
@@ -589,13 +621,8 @@ public class PantallaVotacion {
                 autor = "Sistema";
             }
             
-            // Comprobar si al autor se lo reconoce como impostor
-            boolean msgIsImp = false;
-            for (Jugador j : estadoJuego.getJugadores()) {
-                if (j.getNombre().equals(autor) && j.isImpostor()) {
-                    msgIsImp = true; break;
-                }
-            }
+            // Comprobar si al autor se lo reconoce como impostor en O(1)
+            boolean msgIsImp = impostoresSet.contains(autor);
 
             if (msgIsImp && localIsImp) g2.setColor(Color.RED);
             else g2.setColor(Color.CYAN);

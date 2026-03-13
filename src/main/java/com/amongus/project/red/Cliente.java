@@ -32,7 +32,8 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
             
             // Preparamos los canales para hablar y escuchar
             entrada = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            salida = new PrintWriter(socket.getOutputStream(), true); // true = enviar rapido
+            // Fix #3: autoFlush=false, consistente con AtencionJugador. flush() explícito en enviarMensaje().
+            salida = new PrintWriter(socket.getOutputStream(), false);
             
             System.out.println("Cliente: ¡Conectado exitosamente!");
             
@@ -48,9 +49,9 @@ public class Cliente extends Thread { // Hereda de Thread para escuchar sin trab
     // Este metodo sirve para mandar mensajes al servidor desde el juego
     // Ejemplo: enviarMensaje("MOVER:50,50")
     public void enviarMensaje(String texto) {
-        if (salida != null) { // Verificamos que estemos conectados
+        if (salida != null) {
             salida.println(texto);
-            // System.out.println("Cliente envio: " + texto); // Descomentar para depurar
+            salida.flush(); // Flush explícito (autoFlush desactivado)
         }
     }
 

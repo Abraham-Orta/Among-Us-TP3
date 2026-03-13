@@ -5,8 +5,13 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.HashMap;
-import java.util.Map;public class Servidor {
+import java.util.Map;
+public class Servidor {
 
     private static final int PUERTO        = 1234;
     private static final int MAX_JUGADORES = 10;
@@ -18,13 +23,28 @@ import java.util.Map;public class Servidor {
 
     public static CopyOnWriteArrayList<AtencionJugador> listaJugadores = new CopyOnWriteArrayList<>();
     public static boolean partidaIniciada = false;
-    
+
+    // Fix #2: Mapa de posiciones pendientes para el batch de MOVER.
+    // Clave: nombre del jugador. Valor: "nombre,x,y" (la parte después de "MOVER:")
+    // ConcurrentHashMap garantiza acceso thread-safe desde los hilos de AtencionJugador.
+    public static final ConcurrentHashMap<String, String> pendingMoves = new ConcurrentHashMap<>();
+
+    // Scheduler que cada 50ms agrupa pending moves y los envía en un solo mensaje BATCH_MOVER
+    private static final ScheduledExecutorService batchScheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "BatchMoverScheduler");
+        t.setDaemon(true); // No bloquea el cierre de la JVM
+        return t;
+    });
+
     // Estado de votación
     public static boolean enVotacion = false;
     private static Map<String, String> votosActuales = new HashMap<>();
 
     public static void main(String[] args) {
         System.out.println("Iniciando el servidor de Among Us...");
+
+        // Fix #2: Iniciar el scheduler de batch de posiciones (50ms = 20 actualizaciones/seg)
+        batchScheduler.scheduleAtFixedRate(Servidor::enviarBatchMover, 50, 50, TimeUnit.MILLISECONDS);
 
         try {
             ServerSocket servidorSocket = new ServerSocket(PUERTO);
@@ -49,6 +69,31 @@ import java.util.Map;public class Servidor {
         } catch (IOException error) {
             System.out.println("Error en el servidor: " + error.getMessage());
             error.printStackTrace();
+        }
+    }
+
+    /**
+     * Fix #2: Agrupa todas las posiciones acumuladas en un único mensaje BATCH_MOVER
+     * y lo envía a todos los jugadores. Se llama cada 50ms desde el batchScheduler.
+     * Formato: BATCH_MOVER:nombre1,x1,y1|nombre2,x2,y2|...
+     */
+    private static void enviarBatchMover() {
+        if (pendingMoves.isEmpty() || listaJugadores.isEmpty()) return;
+
+        // Drenamos el mapa atómicamente: tomamos los valores y limpiamos
+        StringBuilder sb = new StringBuilder("BATCH_MOVER:");
+        boolean primero = true;
+        for (Map.Entry<String, String> entry : pendingMoves.entrySet()) {
+            if (!primero) sb.append('|');
+            sb.append(entry.getValue()); // "nombre,x,y"
+            primero = false;
+        }
+        pendingMoves.clear();
+
+        String batch = sb.toString();
+        for (AtencionJugador jugador : listaJugadores) {
+            try { jugador.enviarMensaje(batch); }
+            catch (Exception e) { /* jugador desconectado, ignorar */ }
         }
     }
 

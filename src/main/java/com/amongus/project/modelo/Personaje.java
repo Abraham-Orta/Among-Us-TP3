@@ -7,6 +7,8 @@ public class Personaje {
     protected double drawX, drawY; // Posición suavizada para renderizado
     protected int velocidad;
     protected Rectangle hitbox;
+    // Fix #1: Rectangle reutilizable para detección de colisión — evita new Rectangle() cada frame
+    private Rectangle hitboxFutura;
     // Dirección: -1 izquierda, 1 derecha, 0 quieto
     protected int direccion = 1; // Default derecha
 
@@ -19,7 +21,10 @@ public class Personaje {
         this.drawX = x;
         this.drawY = y;
         this.velocidad = velocidad;
-        this.hitbox = new Rectangle(x, y, 30, 40); // Hitbox un poco más pequeña
+        this.hitbox = new Rectangle(x, y, 30, 40);
+        // Fix #1: Preinicializar el rectángulo de colisión futura para reutilizarlo
+        // sin crear objetos nuevos en cada frame del game loop.
+        this.hitboxFutura = new Rectangle(0, 0, 30, 40);
     }
 
     /**
@@ -60,11 +65,11 @@ public class Personaje {
             if (nuevoX > mapa.getAncho() - hitbox.width) nuevoX = mapa.getAncho() - hitbox.width;
             if (nuevoY > mapa.getAlto() - hitbox.height) nuevoY = mapa.getAlto() - hitbox.height;
 
-            Rectangle hitboxFutura = new Rectangle(nuevoX, nuevoY, hitbox.width, hitbox.height);
-            
-            // Los fantasmas (jugadores muertos) ignoran las colisiones
+            // Fix #1: Reutilizar hitboxFutura con setLocation() en vez de new Rectangle()
+            hitboxFutura.setLocation(nuevoX, nuevoY);
+
             boolean esFantasma = (this instanceof Jugador && !((Jugador)this).isVivo());
-            
+
             if (esFantasma || !mapa.hayColision(hitboxFutura)) {
                 this.x = nuevoX;
                 this.y = nuevoY;

@@ -1,10 +1,11 @@
-package com.amongus.project.red; // El mismo paquete de red
+package com.amongus.project.red;
 
-import java.io.BufferedReader; // Para leer texto linea por linea
-import java.io.IOException; // Para manejar errores de entrada/salida
-import java.io.InputStreamReader; // Para convertir bytes a caracteres
-import java.io.PrintWriter; // Para enviar texto facilmente
-import java.net.Socket; // Para manejar la conexion
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 
 /**
  * Clase AtencionJugador
@@ -28,20 +29,16 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     public boolean estaVivo = true;
 
     // Constructor: Se ejecuta cuando creamos el objeto con "new"
-    public AtencionJugador(Socket socket) { // Recibimos el socket desde el Servidor
-        this.socketJugador = socket; // Guardamos el socket en la variable privada
-        
-        try { // Intentamos abrir los canales de comunicacion
-            
-            // Preparamos la entrada: Convertimos los bytes del socket en texto leible
+    public AtencionJugador(Socket socket) {
+        this.socketJugador = socket;
+        try {
             entrada = new BufferedReader(new InputStreamReader(socketJugador.getInputStream()));
-            
-            // Preparamos la salida: El 'true' al final es para que envie el mensaje rapido (autoFlush)
-            salida = new PrintWriter(socketJugador.getOutputStream(), true);
-            
-        } catch (IOException e) { // Si falla algo al abrir canales
-            System.out.println("Error al crear los canales del jugador"); // Avisamos
-            e.printStackTrace(); // Mostramos el error
+            // Fix #1: BufferedOutputStream reduce el número de syscalls de escritura al socket.
+            // Sin este buffer, cada println() era una llamada directa al kernel.
+            salida = new PrintWriter(new BufferedOutputStream(socketJugador.getOutputStream(), 8192), false);
+        } catch (IOException e) {
+            System.out.println("Error al crear los canales del jugador");
+            e.printStackTrace();
         }
     }
 
@@ -85,20 +82,15 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                         case "RIGHT": moviendoDerecha = press; break;
                     }
                 }
-                // Cuando un cliente envía su nueva posición (MOVER:nombre,x,y), la reenviamos a todos los demás
+                // Fix #2: En vez de broadcast inmediato, encolamos la última posición.
+                // El ScheduledExecutorService del Servidor enviará un BATCH_MOVER cada 50ms.
                 else if (lineaRecibida.startsWith("MOVER:")) {
-                    for (AtencionJugador otro : Servidor.listaJugadores) {
-                        if (otro != this) { // No se la enviamos al que la mandó
-                            otro.enviarMensaje(lineaRecibida);
-                        }
-                    }
+                    Servidor.pendingMoves.put(nombreJugador, lineaRecibida.substring(6));
                 }
                 // Cuando un cliente envía su nueva posición, la reenviamos a todos los demás
                 else if (lineaRecibida.startsWith("POSICION:")) {
                     for (AtencionJugador otro : Servidor.listaJugadores) {
-                        if (otro != this) { // No se la enviamos al que la mandó
-                            otro.enviarMensaje(lineaRecibida);
-                        }
+                        if (otro != this) otro.enviarMensaje(lineaRecibida);
                     }
                 }
                 // Si alguien es asesinado, informamos a todos
@@ -204,6 +196,7 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
     // Metodo auxiliar para enviarle un mensaje a ESTE jugador
     public void enviarMensaje(String mensaje) { // Recibe el texto
         salida.println(mensaje); // Lo manda por el canal de salida
+        salida.flush();          // Forzamos el envío (autoFlush desactivado para agrupar TCP)
     }
 
     // Metodo para obtener el nombre del jugador
