@@ -348,8 +348,10 @@ public class Jugador extends Personaje {
 
     public long getTiempoInicioAsesinato() { return tiempoInicioAsesinato; }
     public int getCooldownAsesinato()      { return cooldownAsesinato; }
-    public int getCooldownSabotaje()       { return cooldownSabotaje; }
     public int getCooldownReporte()        { return cooldownReporte; }
+    public int getCooldownSabotaje()       { return cooldownSabotaje; }
+    public void setCooldownSabotaje(int cd) { this.cooldownSabotaje = cd; }
+    public int getCooldownTarea()          { return cooldownTarea; }
     public int getCooldownVentilacion()    { return cooldownVentilacion; }
 
     public java.util.List<String> getTareasPendientes() { return tareasPendientes; }

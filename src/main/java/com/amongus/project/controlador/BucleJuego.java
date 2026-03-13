@@ -259,6 +259,11 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             estado.setProgresoTareas(mensaje.substring(16));
         } else if (mensaje.equals("SABOTAJE:LUCES:ON")) {
             estado.setLucesSaboteadas(true);
+            // Al activarse un sabotaje, todos los impostores deben esperar 30 segundos (1800 frames a 60 FPS)
+            Jugador local = estado.getJugadorLocal();
+            if (local != null && local.isImpostor()) {
+                local.setCooldownSabotaje(1800);
+            }
         } else if (mensaje.startsWith("SABOTAJE:LUCES:OFF")) {
             estado.setLucesSaboteadas(false);
         } else if (mensaje.startsWith("SOMBRERO:")) {
