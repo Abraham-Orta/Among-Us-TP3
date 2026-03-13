@@ -140,12 +140,42 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             if (estado.getFaseActual() == EstadoJuego.Fase.VOTACION && panelJuego.getPantallaVotacion() != null) {
                 panelJuego.getPantallaVotacion().recibirMensajeChat(mensaje.substring(5));
             }
-        } else if (mensaje.startsWith("REPORTAR:")) {
-            estado.setFaseActual(EstadoJuego.Fase.VOTACION);
-            if (panelJuego.getPantallaVotacion() != null)
-                panelJuego.getPantallaVotacion().reiniciarVotacion();
-            for (Jugador j : estado.getJugadores()) j.resetVoto();
-            if (estado.getJugadorLocal() != null) estado.getJugadorLocal().resetVoto();
+        } else if (mensaje.startsWith("REPORTAR_CUERPO:")) {
+            try {
+                String[] partes = mensaje.split(":");
+                String reportador = partes[1];
+                String muerto = partes[2];
+                Jugador jugRep = null;
+                Jugador jugMue = null;
+                for (Jugador j : estado.getJugadores()) {
+                    if (j.getNombre().equals(reportador)) jugRep = j;
+                    if (j.getNombre().equals(muerto)) jugMue = j;
+                }
+                estado.setReportadorActual(jugRep);
+                estado.setMuertoReportadoActual(jugMue);
+                estado.setTiempoInicioReporte(System.currentTimeMillis());
+                estado.setFaseActual(EstadoJuego.Fase.CINEMATICA_REPORTE);
+                // La transición a VOTACION se hará en PanelJuego después de unos segundos
+                
+                for (Jugador j : estado.getJugadores()) j.resetVoto();
+                if (estado.getJugadorLocal() != null) estado.getJugadorLocal().resetVoto();
+            } catch (Exception e) {}
+        } else if (mensaje.startsWith("REPORTAR_EMERGENCIA:")) {
+            try {
+                String[] partes = mensaje.split(":");
+                String reportador = partes[1];
+                Jugador jugRep = null;
+                for (Jugador j : estado.getJugadores()) {
+                    if (j.getNombre().equals(reportador)) jugRep = j;
+                }
+                estado.setReportadorActual(jugRep);
+                estado.setMuertoReportadoActual(null); // No hay cuerpo en emergencia
+                estado.setTiempoInicioReporte(System.currentTimeMillis());
+                estado.setFaseActual(EstadoJuego.Fase.CINEMATICA_REPORTE);
+                
+                for (Jugador j : estado.getJugadores()) j.resetVoto();
+                if (estado.getJugadorLocal() != null) estado.getJugadorLocal().resetVoto();
+            } catch (Exception e) {}
         } else if (mensaje.startsWith("VOTO:")) {
             // procesar votos remotos
             try {
@@ -299,6 +329,16 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                 framesRevelacion = 0;
             }
 
+        } else if (fase == EstadoJuego.Fase.CINEMATICA_REPORTE) {
+            long ahora = System.currentTimeMillis();
+            // La cinemática dura 5 segundos (5000 ms)
+            if (ahora - estado.getTiempoInicioReporte() > 5000) {
+                estado.setFaseActual(EstadoJuego.Fase.VOTACION);
+                if (panelJuego.getPantallaVotacion() != null)
+                    panelJuego.getPantallaVotacion().reiniciarVotacion();
+                for (Jugador j : estado.getJugadores()) j.resetVoto();
+                if (estado.getJugadorLocal() != null) estado.getJugadorLocal().resetVoto();
+            }
         } else if (fase == EstadoJuego.Fase.JUGANDO) {
 
             // Actualizar físicas y teclado del jugador local con Delta Time

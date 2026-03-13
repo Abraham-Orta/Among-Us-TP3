@@ -147,7 +147,7 @@ public class ManejadorEntrada extends KeyAdapter {
         }
         if (c == KeyEvent.VK_R) {
             // este sonido de reportar suena para todos (tripulantes e impostores)
-            if (!accionReportar) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+            if (!accionReportar) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("sonido_Botones_votacion.wav");
             accionReportar = true;
         }
         if (c == KeyEvent.VK_H) {
@@ -158,6 +158,7 @@ public class ManejadorEntrada extends KeyAdapter {
 
         // Acciones: Emergencia
         if (c == KeyEvent.VK_V) {
+            if (!accionEmergencia) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("sonido_Botones_votacion.wav");
             accionEmergencia = true;
         }
 

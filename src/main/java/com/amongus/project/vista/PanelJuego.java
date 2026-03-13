@@ -58,6 +58,15 @@ public class PanelJuego extends JPanel {
     private Rectangle rectKill, rectReport, rectVent, rectSabotage, rectContinuar, rectEmergencia;
     private boolean cercaDeBoton = false;
 
+    // Variables para el botón de 5 capas
+    private float mesaX, mesaY;
+    private final float ESCALA_BOTON = 40f;
+    private float escalaActual = 40f;
+    private boolean mostrarCristal = false;
+    private boolean animandoBoton = false;
+    private int timerBoton = 0;
+    private int offsetRojo = 0;
+
     // ==============================================================
     // SISTEMA DE PALETTE SWAPPING Y ANIMACIÓN (LOS 5 PASOS)
     // ==============================================================
@@ -233,7 +242,11 @@ public class PanelJuego extends JPanel {
                 }
 
                 if (rectKill != null && rectKill.contains(e.getPoint())) { manejadorEntrada.accionMatar = true; clickHUD = true; }
-                if (rectReport != null && rectReport.contains(e.getPoint())) { manejadorEntrada.accionReportar = true; clickHUD = true; }
+                if (rectReport != null && rectReport.contains(e.getPoint())) { 
+                    manejadorEntrada.accionReportar = true; 
+                    clickHUD = true; 
+                    com.amongus.project.vista.ReproductorMusica.reproducirEfecto("sonido_Botones_votacion.wav");
+                }
                 if (rectVent != null && rectVent.contains(e.getPoint())) { manejadorEntrada.accionVentilar = true; clickHUD = true; }
                 if (rectSabotage != null && rectSabotage.contains(e.getPoint())) { manejadorEntrada.accionSabotaje = true; clickHUD = true; }
                 if (rectEmergencia != null && rectEmergencia.contains(e.getPoint()) && cercaDeBoton) {
@@ -242,10 +255,12 @@ public class PanelJuego extends JPanel {
                     if (local != null && local.isVivo()) {
                         local.presionarBotonEmergencia();
                         clickHUD = true;
+                        com.amongus.project.vista.ReproductorMusica.reproducirEfecto("sonido_Botones_votacion.wav");
                     }
                 }
                 
-                if (clickHUD) {
+                // Si el clic fue en otro botón que no es de reporte, suena el sonido de botón UI genérico
+                if (clickHUD && !manejadorEntrada.accionReportar && !manejadorEntrada.accionEmergencia) {
                     com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
                 }
             }
@@ -563,10 +578,10 @@ public class PanelJuego extends JPanel {
                     
                     BufferedImage imgColoreada = obtenerSpriteColoreado(rutaImg, j.getColor(), "rev_" + j.getNombre());
                     
-                    if (imgColoreada != null) {
-                        g2d.drawImage(imgColoreada, curX, curY, drawW, drawH, null);
-                        
-                        // --- DIBUJAR SOMBRERO EN REVELACIÓN ---
+                        if (imgColoreada != null) {
+                            g2d.drawImage(imgColoreada, curX, curY, drawW, drawH, null);
+                            
+                            // --- DIBUJAR SOMBRERO EN REVELACIÓN ---
                         if (!j.getSombrero().equals("ninguno")) {
                             String rutaSombrero = "sprites/sombreros/" + j.getSombrero() + ".png";
                             Image imgSom = obtenerImagenFija(rutaSombrero);
@@ -649,12 +664,144 @@ public class PanelJuego extends JPanel {
             return;
         }
 
+        // --- CINEMÁTICA DE REPORTE DE CUERPO ---
+        if (fase == EstadoJuego.Fase.CINEMATICA_REPORTE) {
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, getWidth(), getHeight());
+
+            long tiempoAnim = System.currentTimeMillis() - estadoJuego.getTiempoInicioReporte();
+
+            Jugador reporter = estadoJuego.getReportadorActual();
+            Jugador body = estadoJuego.getMuertoReportadoActual();
+
+            if (reporter != null) {
+                boolean isEmergencia = (body == null);
+                // Si hay un cuerpo a la derecha, el reportero solo puede ocupar la mitad izquierda de la pantalla
+                int limiteX = isEmergencia ? getWidth() : getWidth() / 2;
+                
+                if (tiempoAnim < 1500) {
+                    // FASE 1: Imagen 1 sola, arriba a la izquierda
+                    BufferedImage img1 = obtenerSpriteColoreado("sprites/cinematica votacion/reportar reunion 1.png", reporter.getColor(), "reporte_rep_" + reporter.getNombre() + "_1");
+                    if (img1 != null) {
+                        int maxH = (int)(getHeight() * 0.4);
+                        int maxW = (int)(limiteX * 0.45); // Casi la mitad del lado izquierdo
+                        int sH = maxH;
+                        int sW = (int)(img1.getWidth() * ((double)sH / img1.getHeight()));
+                        if (sW > maxW) { sW = maxW; sH = (int)(img1.getHeight() * ((double)sW / img1.getWidth())); }
+                        
+                        int x = isEmergencia ? (getWidth() / 2) - sW - 10 : 30;
+                        int y = (getHeight() / 2) - sH; // Arriba del centro
+                        g2d.drawImage(img1, x, y, sW, sH, null);
+                    }
+                } else if (tiempoAnim < 3000) {
+                    // FASE 2: Imagen 1 se mantiene, e Imagen 2 aparece a su lado derecho
+                    BufferedImage img1 = obtenerSpriteColoreado("sprites/cinematica votacion/reportar reunion 1.png", reporter.getColor(), "reporte_rep_" + reporter.getNombre() + "_1");
+                    BufferedImage img2 = obtenerSpriteColoreado("sprites/cinematica votacion/reportar reunion 2.png", reporter.getColor(), "reporte_rep_" + reporter.getNombre() + "_2");
+                    
+                    int maxH = (int)(getHeight() * 0.4);
+                    int maxW = (int)(limiteX * 0.45);
+                    
+                    int x1 = 30, y1 = 0, w1 = 0;
+                    if (img1 != null) {
+                        int sH = maxH;
+                        int sW = (int)(img1.getWidth() * ((double)sH / img1.getHeight()));
+                        if (sW > maxW) { sW = maxW; sH = (int)(img1.getHeight() * ((double)sW / img1.getWidth())); }
+                        
+                        x1 = isEmergencia ? (getWidth() / 2) - sW - 10 : 30;
+                        y1 = (getHeight() / 2) - sH; 
+                        w1 = sW;
+                        g2d.drawImage(img1, x1, y1, sW, sH, null);
+                    }
+                    if (img2 != null) {
+                        int sH = maxH;
+                        int sW = (int)(img2.getWidth() * ((double)sH / img2.getHeight()));
+                        if (sW > maxW) { sW = maxW; sH = (int)(img2.getHeight() * ((double)sW / img2.getWidth())); }
+                        
+                        // Aparece al lado derecho de la 1, un poco más abajo (para dar perspectiva de manga)
+                        int x2 = x1 + w1 + 10;
+                        int y2 = y1 + (maxH / 3);
+                        g2d.drawImage(img2, x2, y2, sW, sH, null);
+                    }
+                } else {
+                    // FASE 3: Desaparecen la 1 y la 2, aparece la 3 centrada y más grande
+                    BufferedImage img3 = obtenerSpriteColoreado("sprites/cinematica votacion/reportar reunion 3.png", reporter.getColor(), "reporte_rep_" + reporter.getNombre() + "_3");
+                    if (img3 != null) {
+                        int maxH = (int)(getHeight() * 0.55);
+                        int maxW = (int)(limiteX * 0.8);
+                        int sH = maxH;
+                        int sW = (int)(img3.getWidth() * ((double)sH / img3.getHeight()));
+                        if (sW > maxW) { sW = maxW; sH = (int)(img3.getHeight() * ((double)sW / img3.getWidth())); }
+                        
+                        int x = isEmergencia ? (getWidth() - sW) / 2 : (limiteX - sW) / 2;
+                        int y = (getHeight() - sH) / 2;
+                        g2d.drawImage(img3, x, y, sW, sH, null);
+                    }
+                }
+
+                // 2. Dibujar el cadáver y el sprite 5 encima
+                if (body != null) {
+                    // Cuerpo de la víctima
+                    String rutaMoldeCuerpo = "sprites/Muerte/killalien_victim0048.png";
+                    BufferedImage spriteB = obtenerSpriteColoreado(rutaMoldeCuerpo, body.getColor(), "reporte_body_" + body.getNombre());
+                    
+                    // Sprite del megáfono/alerta (frame 5 sin colorear o coloreado según prefieras, asumo que sin colorear porque es un objeto)
+                    Image spriteAlerta = obtenerImagenFija("sprites/cinematica votacion/reportar reunion 5.png");
+
+                    if (spriteB != null) {
+                        int maxH = (int)(getHeight() * 0.35); // Más bajito porque está en el suelo
+                        int maxW = (int)(getWidth() * 0.4);
+                        int scaleH = maxH;
+                        int scaleW = (int)(spriteB.getWidth() * ((double)scaleH / spriteB.getHeight()));
+                        
+                        if (scaleW > maxW) {
+                            scaleW = maxW;
+                            scaleH = (int)(spriteB.getHeight() * ((double)scaleW / spriteB.getWidth()));
+                        }
+                        
+                        int bodyX = (getWidth() / 2) + 20; // A la derecha
+                        int bodyY = (getHeight() / 2) + (int)(getHeight() * 0.1); // En el suelo
+                        
+                        // Dibujamos el cuerpo
+                        g2d.drawImage(spriteB, bodyX, bodyY, scaleW, scaleH, null);
+
+                        // Dibujamos el sprite 5 (la alerta de reporte) EXACTAMENTE ENCIMA del cadáver
+                        if (spriteAlerta != null) {
+                            // Mismas dimensiones y coordenadas para que quede superpuesto
+                            g2d.drawImage(spriteAlerta, bodyX, bodyY, scaleW, scaleH, null);
+                        }
+                    }
+                }
+                
+                // 3. Textos adaptativos
+                g2d.setColor(Color.RED);
+                int titleSize = Math.max(20, (int)(getHeight() * 0.08));
+                g2d.setFont(cargarFuente(titleSize));
+                String title = (body != null) ? "CUERPO REPORTADO" : "REUNION DE EMERGENCIA";
+                int textW = g2d.getFontMetrics().stringWidth(title);
+                g2d.drawString(title, (getWidth() - textW)/2, (int)(getHeight() * 0.15));
+                
+                g2d.setColor(Color.WHITE);
+                int subSize = Math.max(15, (int)(getHeight() * 0.05));
+                g2d.setFont(cargarFuente(subSize));
+                String subtitle = (body != null) ? reporter.getNombre() + " encontro el cuerpo de " + body.getNombre() : reporter.getNombre() + " llamo a una reunion";
+                int textW2 = g2d.getFontMetrics().stringWidth(subtitle);
+                g2d.drawString(subtitle, (getWidth() - textW2)/2, (int)(getHeight() * 0.22));
+            }
+            return;
+        }
+
         // Capa 1: Mapa (Solo dibujado dentro del "Lente" visual)
         if (mapa != null) {
             mapa.render(g, manejadorEntrada.modoDesarrollador, camX, camY, getWidth(), getHeight());
         }
 
         g2d.translate(-camX, -camY);
+
+        // --- BOTÓN DE EMERGENCIA FÍSICO ---
+        if (local != null) {
+            actualizarBoton(local);
+            dibujarBoton(g2d);
+        }
 
         // Detección de botón de emergencia cercano (en coordenadas de mapa)
         if (mapa != null) {
@@ -745,7 +892,7 @@ public class PanelJuego extends JPanel {
         }
 
         // Capa 3: Oscuridad externa al rango visual.
-        // Se dibuja un Área restando el círculo de luz de la ventana para oscurecer eficientemente 
+        // Se dibuja un Área restando el círculo de luz de la ventana para oscurecer eficientemente
         // y se elimina la necesidad del costoso RadialGradientPaint de dibujarCampoVisual.
         if (local != null && mapa != null) {
             float radioLuz;
@@ -756,26 +903,26 @@ public class PanelJuego extends JPanel {
             }
 
             g2d.translate(camX, camY); // restaurar a coordenadas de pantalla UI
-            
+
             // Construir la máscara negra
             Area pantallaCompleta = new Area(new Rectangle(0, 0, getWidth(), getHeight()));
-            
+
             int luzRealX = local.getX() - camX + 15;
             int luzRealY = local.getY() - camY + 20;
 
             Shape circuloLuz = new Ellipse2D.Float(
-                luzRealX - radioLuz, 
-                luzRealY - radioLuz, 
-                radioLuz * 2, 
+                luzRealX - radioLuz,
+                luzRealY - radioLuz,
+                radioLuz * 2,
                 radioLuz * 2
             );
-            
+
             pantallaCompleta.subtract(new Area(circuloLuz));
 
             // Dibujar la oscuridad exterior
             g2d.setColor(Color.BLACK);
             g2d.fill(pantallaCompleta);
-            
+
             // Agregamos un borde suave (penumbra) en el arco de visión
             Graphics2D g2soft = (Graphics2D) g.create();
             java.awt.RadialGradientPaint bordeDifuminado = new java.awt.RadialGradientPaint(
@@ -789,7 +936,7 @@ public class PanelJuego extends JPanel {
             g2soft.setPaint(bordeDifuminado);
             g2soft.fill(circuloLuz);
             g2soft.dispose();
-            
+
             g2d.translate(-camX, -camY); // volver al estado normal
         }
 
@@ -833,7 +980,7 @@ public class PanelJuego extends JPanel {
                 if (cercaDeBoton) {
                     dibujarBotonAccion(g2hud, "boton/botnhud/boton-hud.png", rectEmergencia, manejadorEntrada.accionEmergencia, true, 0);
                 }
-                
+
                 // Botón Reportar (Siempre visible para tripulantes y impostores vivos)
                 boolean puedeReportar = local.hayCuerpoCerca();
                 int cdReporte = local.getCooldownReporte();
@@ -844,10 +991,10 @@ public class PanelJuego extends JPanel {
                     boolean puedeMatar = local.hayVictimaCerca();
                     int cdMatar = local.getCooldownAsesinato();
                     dibujarBotonAccion(g2hud, "botonkill.png", rectKill, manejadorEntrada.accionMatar, puedeMatar && cdMatar <= 0, cdMatar);
-                    
+
                     int cdVent = local.getCooldownVentilacion();
                     dibujarBotonAccion(g2hud, "Ventana_boton.png", rectVent, manejadorEntrada.accionVentilar, cdVent <= 0, cdVent);
-                    
+
                     int cdSabotaje = local.getCooldownSabotaje();
                     dibujarBotonAccion(g2hud, "Sabotaje_boton.png", rectSabotage, manejadorEntrada.accionSabotaje, cdSabotaje <= 0, cdSabotaje);
                 }
@@ -959,14 +1106,14 @@ public class PanelJuego extends JPanel {
             return; // No dibujamos al fantasma
         }
 
-        // Determinar coordenadas de dibujo del personaje/fantasma activo
-        int x, y;
+        // Determinar coordenadas base de dibujo del personaje/fantasma activo
+        int baseX, baseY;
         if (j == local) {
-            x = j.getX();
-            y = j.getY();
+            baseX = j.getX();
+            baseY = j.getY();
         } else {
-            x = j.getDrawX();
-            y = j.getDrawY();
+            baseX = j.getDrawX();
+            baseY = j.getDrawY();
         }
 
         String rutaMolde = "";
@@ -1008,46 +1155,49 @@ public class PanelJuego extends JPanel {
         BufferedImage spriteActual = obtenerSpriteColoreado(rutaMolde, j.getColor(), claveCache);
 
         Graphics2D g2d = (Graphics2D) g.create();
-        // BILINEAR es suficiente para sprites de 40x50px escalados — BICUBIC era innecesariamente caro
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
         if (spriteActual != null) {
+            // --- DIBUJAR CUERPO BASE ---
             if (dir == 1) {
-                g2d.drawImage(spriteActual, x, y, w, h, null);
+                g2d.drawImage(spriteActual, baseX, baseY, w, h, null);
             } else {
-                g2d.drawImage(spriteActual, x + w, y, -w, h, null);
+                g2d.drawImage(spriteActual, baseX + w, baseY, -w, h, null);
             }
             
-            // --- DIBUJAR SOMBRERO (Solo para tripulantes vivos) ---
+            // --- DIBUJAR SOMBRERO CON OFFSETS ---
             if (j.isVivo() && !j.getSombrero().equals("ninguno")) {
                 String rutaSombrero = "sprites/sombreros/" + j.getSombrero() + ".png";
                 Image imgSombrero = obtenerImagenFija(rutaSombrero);
                 if (imgSombrero != null) {
-                    // Posicionamiento del sombrero (ajustable según el arte)
-                    int sw = (int)(w * 1.2); // Un poco más ancho que el cuerpo
-                    int sh = (int)(h * 0.8); // Altura proporcional
-                    int sx = x - (sw - w) / 2;
-                    int sy = y - (int)(sh * 0.6); // Lo subimos a la cabeza
+                    // Definición de Offsets y Dimensiones para el sombrero
+                    int sombreroW = (int)(w * 1.2);
+                    int sombreroH = (int)(h * 0.8);
+                    
+                    // Offset: Centrado horizontalmente y subido a la cabeza
+                    int offX = -(sombreroW - w) / 2;
+                    int offY = -(int)(sombreroH * 0.6);
                     
                     if (dir == 1) {
-                        g2d.drawImage(imgSombrero, sx, sy, sw, sh, null);
+                        g2d.drawImage(imgSombrero, baseX + offX, baseY + offY, sombreroW, sombreroH, null);
                     } else {
-                        g2d.drawImage(imgSombrero, sx + sw, sy, -sw, sh, null);
+                        // Al voltear, el offset X también debe ajustarse respecto al borde derecho
+                        g2d.drawImage(imgSombrero, baseX + w - offX, baseY + offY, -sombreroW, sombreroH, null);
                     }
                 }
             }
         } else {
             // fallback (cuadros)
             g2d.setColor(j.getColor());
-            if (dir == 1) g2d.fillRect(x - 5, y + 10, 10, 25);
-            else          g2d.fillRect(x + 30 - 5, y + 10, 10, 25);
-            g2d.fillRoundRect(x, y, 30, 40, 15, 15);
-            g2d.fillRect(x, y + 40 - 5, 10, 15);
-            g2d.fillRect(x + 30 - 10, y + 40 - 5, 10, 15);
+            if (dir == 1) g2d.fillRect(baseX - 5, baseY + 10, 10, 25);
+            else          g2d.fillRect(baseX + 30 - 5, baseY + 10, 10, 25);
+            g2d.fillRoundRect(baseX, baseY, 30, 40, 15, 15);
+            g2d.fillRect(baseX, baseY + 40 - 5, 10, 15);
+            g2d.fillRect(baseX + 30 - 10, baseY + 40 - 5, 10, 15);
             g2d.setColor(new Color(150, 200, 220));
-            if (dir == 1) g2d.fillRoundRect(x + 15, y + 10, 18, 12, 5, 5);
-            else          g2d.fillRoundRect(x - 3,  y + 10, 18, 12, 5, 5);
+            if (dir == 1) g2d.fillRoundRect(baseX + 15, baseY + 10, 18, 12, 5, 5);
+            else          g2d.fillRoundRect(baseX - 3,  baseY + 10, 18, 12, 5, 5);
         }
 
         // HUD Textos
@@ -1072,16 +1222,107 @@ public class PanelJuego extends JPanel {
         if (esFantasma && manejadorEntrada.modoDesarrollador) lblNombre += " (Fantasma)";
         else if (j == local && j.isImpostor()) lblNombre += " (Impostor)";
         
-        g2d.drawString(lblNombre, x, y - 10);
+        g2d.drawString(lblNombre, baseX, baseY - 10);
         
         // Resetear transparencia
         g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1.0f));
 
         if (j == local && j.isImpostor() && manejadorEntrada.modoDesarrollador) {
             g2d.setColor(Color.ORANGE);
-            g2d.drawString("[Q] Matar | [H] Luces", x - 30, y + 65);
+            g2d.drawString("[Q] Matar | [H] Luces", baseX - 30, baseY + 65);
         }
         
         g2d.dispose();
+    }
+
+    private void actualizarBoton(Jugador local) {
+        if (local == null) return;
+
+        Mapa mapa = estadoJuego.getMapa();
+        float bX = 1324f;
+        float bY = 998f;
+        escalaActual = ESCALA_BOTON;
+
+        if (mapa != null && !mapa.getBotones().isEmpty()) {
+            Rectangle r = mapa.getBotones().get(0);
+            bX = (float) r.getCenterX();
+            bY = (float) r.getCenterY();
+            if (r.width > 0) {
+                // Hacemos que la base del botón (350px) coincida con el ancho del objeto en el mapa
+                escalaActual = (float) r.width / 400f;
+            }
+        }
+
+        // Posicionamiento dinámico: el centro del Botón Rojo (Boton3) debe ser (bX, bY)
+        // Con las nuevas dimensiones, el centro del botón rojo está en (251, 165)
+        float centroRojoX = 251f;
+        float centroRojoY = 165f;
+        mesaX = bX - (centroRojoX * escalaActual) + 14f;
+        mesaY = bY - (centroRojoY * escalaActual) + 1.5f;
+
+        // Distancia < 100px abre cristal (sincronizado con el HUD)
+        double dist = Math.sqrt(Math.pow(local.getX() - bX, 2) + Math.pow(local.getY() - bY, 2));
+        mostrarCristal = (dist < 100);
+
+        // Disparar animación si el jugador local lo solicitó
+        if (local.isDispararAnimacionBoton() && !animandoBoton) {
+            animandoBoton = true;
+            local.setDispararAnimacionBoton(false);
+        }
+
+        if (animandoBoton) {
+            timerBoton++;
+            // En frame 10, offsetRojo = 5
+            if (timerBoton >= 10) offsetRojo = 5;
+            // Al llegar a 40, resetea y llama a iniciar votación
+            if (timerBoton >= 40) {
+                animandoBoton = false;
+                timerBoton = 0;
+                offsetRojo = 0;
+                local.iniciarVotacion();
+            }
+        }
+    }
+
+    private void dibujarBoton(Graphics g) {
+        int x = (int) mesaX;
+        int y = (int) mesaY;
+        float stretchX = 2.2f;
+        float stretchY = 1.3f; // Estiramiento vertical hacia arriba
+
+        // Capa 2: Boton2 (Base)
+        Image img2 = obtenerImagenFija("boton/Boton2.png");
+        if (img2 != null) {
+            int baseW = (int)(400 * escalaActual * stretchX);
+            int baseH = (int)(138 * escalaActual * stretchY) + 3; // +3px altura total
+            int extraW = baseW - (int)(400 * escalaActual);
+            int baseX = x + (int)(76 * escalaActual) - (extraW / 2);
+            // Ajustamos baseY para que crezca hacia arriba
+            int baseY = y + (int)(359 * escalaActual) - (baseH - (int)(138 * escalaActual));
+            g.drawImage(img2, baseX, baseY, baseW, baseH, null);
+        }
+
+        // Capa 3: Boton3 (Rojo)
+        Image img3 = obtenerImagenFija("boton/Boton3.png");
+        if (img3 != null) {
+            int rojoW = (int)(115 * escalaActual * stretchX);
+            int rojoH = (int)(200 * escalaActual * stretchY) + 3; // +3px altura total
+            int extraW = rojoW - (int)(115 * escalaActual);
+            int rojoX = x + (int)(193 * escalaActual) - (extraW / 2);
+            int rojoY = y + (int)(260 * escalaActual) - (rojoH - (int)(200 * escalaActual));
+            g.drawImage(img3, rojoX, rojoY + offsetRojo, rojoW, rojoH, null);
+        }
+
+        // Capa 4/5: Cristal (Cerrado/Abierto)
+        String rutaCristal = mostrarCristal ? "boton/Boton5.png" : "boton/Boton4.png";
+        Image imgC = obtenerImagenFija(rutaCristal);
+        if (imgC != null) {
+            int cristalW = (int)(228 * escalaActual * stretchX);
+            int cristalH = (int)(242 * escalaActual * stretchY) + 3; // +3px altura total
+            int extraW = cristalW - (int)(228 * escalaActual);
+            int cristalX = x + (int)(137 * escalaActual) - (extraW / 2);
+            int cristalY = y + (int)(215 * escalaActual) - (cristalH - (int)(242 * escalaActual));
+            g.drawImage(imgC, cristalX, cristalY, cristalW, cristalH, null);
+        }
     }
 }

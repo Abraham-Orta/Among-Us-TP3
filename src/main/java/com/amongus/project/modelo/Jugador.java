@@ -22,6 +22,7 @@ public class Jugador extends Personaje {
     private int yMuerte;
     private int direccionMuerte = 1;
     private String sombrero = "ninguno"; // ID del sombrero actual
+    private boolean dispararAnimacionBoton = false;
 
     // Red
     private int ultimoXEnviado = -1;
@@ -218,20 +219,30 @@ public class Jugador extends Personaje {
                 int dy = this.y - by;
                 
                 if (dx * dx + dy * dy <= 80 * 80) {
-                    presionarBotonEmergencia();
+                    if (clienteRed != null) {
+                        clienteRed.enviarMensaje("REPORTAR_CUERPO:" + this.nombre + ":" + victima.getNombre());
+                    }
+                    cooldownReporte = 300;
                     break;
                 }
             }
         }
     }
 
-    public void presionarBotonEmergencia() {
+    public void iniciarVotacion() {
         if (!vivo) return;
-        estadoJuego.setFaseActual(EstadoJuego.Fase.VOTACION);
-        for (Jugador j : estadoJuego.getJugadores()) j.resetVoto();
-        if (clienteRed != null) clienteRed.enviarMensaje("REPORTAR:");
+        // Se usa para el botón de emergencia (sin cinemática)
+        if (clienteRed != null) clienteRed.enviarMensaje("REPORTAR_EMERGENCIA:" + this.nombre);
         cooldownReporte = 300;
     }
+
+    public void presionarBotonEmergencia() {
+        if (!vivo) return;
+        this.dispararAnimacionBoton = true;
+    }
+
+    public boolean isDispararAnimacionBoton() { return dispararAnimacionBoton; }
+    public void setDispararAnimacionBoton(boolean b) { this.dispararAnimacionBoton = b; }
 
     private void intentarBotonEmergencia() {
         Mapa mapa = estadoJuego.getMapa();
