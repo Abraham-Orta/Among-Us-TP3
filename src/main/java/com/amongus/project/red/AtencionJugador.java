@@ -110,8 +110,8 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                     Servidor.enviarATodos(lineaRecibida);
                     Servidor.verificarVictoria();
                 }
-                // si alguien reporta un cuerpo, avisamos a todos para abrir la votación
-                else if (lineaRecibida.equals("REPORTAR:")) {
+                // si alguien reporta un cuerpo o usa emergencia, avisamos a todos para abrir la votación (o cinemática)
+                else if (lineaRecibida.startsWith("REPORTAR_CUERPO:") || lineaRecibida.startsWith("REPORTAR_EMERGENCIA:")) {
                     Servidor.enviarATodos(lineaRecibida);
                     Servidor.iniciarVotacion();
                 }

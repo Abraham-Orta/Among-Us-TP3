@@ -204,42 +204,41 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
         
         panelCentral.add(scroll, BorderLayout.CENTER);
 
-        // --- PANEL DE SELECCIÓN DE SOMBRERO ---
+        // --- SELECTOR DE SOMBRERO ---
         JPanel panelSombrero = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 10));
         panelSombrero.setOpaque(false);
 
-        // Inicializar lista de sombreros (IDs hats0002 a hats0110 - Se saltó el 0001 por eliminación)
         listaSombreros.add("ninguno");
         for (int i = 2; i <= 110; i++) {
             listaSombreros.add(String.format("hats%04d", i));
         }
 
-        JButton btnAnterior = crearBotonFlecha(true);
-        JButton btnSiguiente = crearBotonFlecha(false);
+        JButton btnSombreroAnt = crearBotonFlecha(true);
+        JButton btnSombreroSig = crearBotonFlecha(false);
 
         lblVistaPreviaSombrero = new JLabel();
         lblVistaPreviaSombrero.setPreferredSize(new Dimension(80, 80));
         lblVistaPreviaSombrero.setHorizontalAlignment(SwingConstants.CENTER);
         actualizarVistaPreviaSombrero();
 
-        btnAnterior.addActionListener(e -> {
+        btnSombreroAnt.addActionListener(e -> {
             indiceSombreroActual = (indiceSombreroActual - 1 + listaSombreros.size()) % listaSombreros.size();
             actualizarVistaPreviaSombrero();
             enviarSombreroRed();
         });
 
-        btnSiguiente.addActionListener(e -> {
+        btnSombreroSig.addActionListener(e -> {
             indiceSombreroActual = (indiceSombreroActual + 1) % listaSombreros.size();
             actualizarVistaPreviaSombrero();
             enviarSombreroRed();
         });
 
-        panelSombrero.add(btnAnterior);
+        panelSombrero.add(btnSombreroAnt);
         panelSombrero.add(lblVistaPreviaSombrero);
-        panelSombrero.add(btnSiguiente);
+        panelSombrero.add(btnSombreroSig);
 
+        // Agregamos el panel de sombreros a la parte inferior del panel central
         panelCentral.add(panelSombrero, BorderLayout.SOUTH);
-        // ---------------------------------------
 
         panelFondo.add(panelCentral, BorderLayout.CENTER);
 
@@ -423,7 +422,10 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
                     if (entrada.contains(":")) {
                         String[] partes = entrada.split(":");
                         String nom = partes[0].trim();
-                        String som = partes[1].trim();
+                        String som = "ninguno";
+                        
+                        if (partes.length >= 2) som = partes[1].trim();
+                        
                         jugadoresConectados.add(nom);
                         sombrerosJugadores.put(nom, som);
                     } else {
@@ -664,6 +666,7 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             }
         }
     }
+
 
     private void enviarSombreroRed() {
         if (cliente != null) {

@@ -260,7 +260,7 @@ public class PantallaVotacion {
             
             // si hizo clic en el botón de skip
             if (botonSkip.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY)) {
-                ReproductorMusica.reproducirEfecto("UI_boton.wav");
+                ReproductorMusica.reproducirEfecto("sonido_Botones_votacion.wav");
                 jugadorLocal.votarSkip();
                 manejadorEntrada.clickIzquierdo = false; // consumimos el clic para que no se presione dos veces
                 return;
@@ -273,7 +273,7 @@ public class PantallaVotacion {
                 
                 Rectangle areaJugador = obtenerRectanguloJugador(i, jugadores.size(), ultimoAnchoPanel, ultimoAltoPanel);
                 if (areaJugador.contains(manejadorEntrada.mouseX, manejadorEntrada.mouseY)) {
-                    ReproductorMusica.reproducirEfecto("UI_boton.wav");
+                    ReproductorMusica.reproducirEfecto("sonido_Botones_votacion.wav");
                     jugadorLocal.votarJugador(j); // enviamos el voto hacia esa persona
                     manejadorEntrada.clickIzquierdo = false;
                     return;

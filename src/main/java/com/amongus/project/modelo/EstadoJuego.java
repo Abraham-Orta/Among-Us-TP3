@@ -18,10 +18,24 @@ public class EstadoJuego {
     private Jugador jugadorLocal;
     
     // estados del juego: añadimos revelacion para la pantalla inicial de roles
-    public enum Fase { MENU, LOBBY, REVELACION, JUGANDO, VOTACION, FINALIZADO }
+    public enum Fase { MENU, LOBBY, REVELACION, JUGANDO, CINEMATICA_REPORTE, VOTACION, FINALIZADO }
     private Fase faseActual;
     private Mapa mapa;
     
+    // VARIABLES PARA CINEMÁTICA DE REPORTE
+    private Jugador reportadorActual;
+    private Jugador muertoReportadoActual;
+    private long tiempoInicioReporte;
+
+    public Jugador getReportadorActual() { return reportadorActual; }
+    public void setReportadorActual(Jugador j) { this.reportadorActual = j; }
+    
+    public Jugador getMuertoReportadoActual() { return muertoReportadoActual; }
+    public void setMuertoReportadoActual(Jugador j) { this.muertoReportadoActual = j; }
+    
+    public long getTiempoInicioReporte() { return tiempoInicioReporte; }
+    public void setTiempoInicioReporte(long t) { this.tiempoInicioReporte = t; }
+
     // SABOTAJES
     private boolean lucesSaboteadas = false;
 
@@ -69,8 +83,15 @@ public class EstadoJuego {
 
     public Fase getFaseActual() { return faseActual; }
     public void setFaseActual(Fase f) {
-        if (this.faseActual != f && f == Fase.VOTACION) {
-            com.amongus.project.vista.ReproductorMusica.reproducirEfecto("reporte.wav");
+        if (this.faseActual != f) {
+            // Reproducir sonido de impacto al entrar a cinemática de reporte
+            if (f == Fase.CINEMATICA_REPORTE) {
+                com.amongus.project.vista.ReproductorMusica.reproducirEfecto("sonido_reporte.wav");
+            } 
+            // Reproducir sonido ambiente/tensión al entrar a votación
+            else if (f == Fase.VOTACION) {
+                com.amongus.project.vista.ReproductorMusica.reproducirEfecto("reporte.wav");
+            }
         }
 
         this.faseActual = f;
