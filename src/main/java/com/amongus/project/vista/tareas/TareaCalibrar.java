@@ -20,6 +20,11 @@ public class TareaCalibrar extends JPanel {
     private int etapaActual = 0; 
     private Timer timerAnimacion;
     private boolean completada = false;
+    private TareaCompletadaListener listener;
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
 
     public TareaCalibrar() {
         setPreferredSize(new Dimension(ANCHO, ALTO));
@@ -72,6 +77,7 @@ public class TareaCalibrar extends JPanel {
             if (etapaActual > 2) {
                 completada = true;
                 timerAnimacion.stop();
+                if (listener != null) listener.onTareaCompletada();
             }
         } else {
             System.out.println("-> FALLO: Reiniciando...");

@@ -10,6 +10,7 @@ import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Paint;
 import java.awt.RadialGradientPaint;
+import java.awt.GradientPaint;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.BasicStroke;
@@ -55,7 +56,7 @@ public class PanelJuego extends JPanel {
     private EstadoJuego estadoJuego;
 
     // Rectángulos para los botones del HUD
-    private Rectangle rectKill, rectReport, rectVent, rectSabotage, rectContinuar, rectEmergencia;
+    private Rectangle rectKill, rectReport, rectVent, rectSabotage, rectContinuar, rectEmergencia, rectUse;
     private boolean cercaDeBoton = false;
 
     // ==============================================================
@@ -236,6 +237,7 @@ public class PanelJuego extends JPanel {
                 if (rectReport != null && rectReport.contains(e.getPoint())) { manejadorEntrada.accionReportar = true; clickHUD = true; }
                 if (rectVent != null && rectVent.contains(e.getPoint())) { manejadorEntrada.accionVentilar = true; clickHUD = true; }
                 if (rectSabotage != null && rectSabotage.contains(e.getPoint())) { manejadorEntrada.accionSabotaje = true; clickHUD = true; }
+                if (rectUse != null && rectUse.contains(e.getPoint())) { manejadorEntrada.accionUsar = true; clickHUD = true; }
                 if (rectEmergencia != null && rectEmergencia.contains(e.getPoint()) && cercaDeBoton) {
                     manejadorEntrada.accionEmergencia = true; // Feedback de estado
                     Jugador local = estadoJuego.getJugadorLocal();
@@ -256,6 +258,7 @@ public class PanelJuego extends JPanel {
                 manejadorEntrada.accionReportar = false;
                 manejadorEntrada.accionVentilar = false;
                 manejadorEntrada.accionSabotaje = false;
+                manejadorEntrada.accionUsar     = false;
                 manejadorEntrada.accionEmergencia = false;
             }
         });
@@ -652,6 +655,24 @@ public class PanelJuego extends JPanel {
         // Capa 1: Mapa (Solo dibujado dentro del "Lente" visual)
         if (mapa != null) {
             mapa.render(g, manejadorEntrada.modoDesarrollador, camX, camY, getWidth(), getHeight());
+            
+            // DIBUJAR TAREAS (Zonas de interacción en el mapa)
+            for (com.amongus.project.modelo.TareaMapa tarea : mapa.getTareasDisponibles()) {
+                Rectangle r = tarea.getZona();
+                // Solo dibujamos si el jugador local tiene esta tarea pendiente o es impostor
+                if (local != null && (local.getTareasPendientes().contains(tarea.getNombre()) || local.isImpostor())) {
+                    g2d.setColor(new Color(255, 255, 0, 80)); // Amarillo suave
+                    g2d.fillRect(r.x, r.y, r.width, r.height);
+                    g2d.setColor(new Color(255, 255, 100, 180)); // Borde brillante
+                    g2d.setStroke(new BasicStroke(3));
+                    g2d.drawRect(r.x, r.y, r.width, r.height);
+                    
+                    // Texto pequeño con el nombre de la tarea
+                    g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                    g2d.setColor(Color.WHITE);
+                    g2d.drawString("TAREA", r.x, r.y - 5);
+                }
+            }
         }
 
         g2d.translate(-camX, -camY);
@@ -801,6 +822,112 @@ public class PanelJuego extends JPanel {
         }
         
         dibujarHUD(g);
+        dibujarTareas(g);
+    }
+
+    private void dibujarTareas(Graphics g) {
+        Jugador local = estadoJuego.getJugadorLocal();
+        if (local == null) return;
+
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        
+        int x = 20;
+        int y = 40;
+        
+        // --- 1. BARRA DE PROGRESO GLOBAL ---
+        g2.setFont(cargarFuente(18f));
+        g2.setColor(Color.WHITE);
+        g2.drawString("PROGRESO TOTAL", x, y - 20);
+        
+        int barW = 300;
+        int barH = 25;
+        // Fondo de la barra
+        g2.setColor(new Color(30, 30, 30, 220));
+        g2.fillRoundRect(x, y - 15, barW, barH, 12, 12);
+        
+        String progreso = estadoJuego.getProgresoTareas();
+        try {
+            String[] partes = progreso.split("/");
+            int actuales = Integer.parseInt(partes[0]);
+            int totales = Integer.parseInt(partes[1]);
+            if (totales > 0) {
+                int filledW = (int) (barW * ((double) actuales / totales));
+                // Gradiente verde para la barra
+                g2.setPaint(new GradientPaint(x, 0, new Color(0, 150, 0), x + filledW, 0, new Color(0, 255, 0)));
+                g2.fillRoundRect(x, y - 15, filledW, barH, 12, 12);
+            }
+        } catch (Exception e) {}
+        
+        g2.setColor(Color.WHITE);
+        g2.setStroke(new BasicStroke(3));
+        g2.drawRoundRect(x, y - 15, barW, barH, 12, 12);
+        
+        // --- 2. LISTA DE TAREAS LOCALES ---
+        y += 50;
+        
+        // Dibujar un fondo oscuro para la lista de tareas
+        int numTareas = local.getTareasPendientes().size() + local.getTareasCompletadas().size();
+        // System.out.println("Dibujando HUD: Tareas en Jugador = " + numTareas); // Log de depuración
+        if (numTareas > 0) {
+            g2.setColor(new Color(0, 0, 0, 120));
+            g2.fillRoundRect(x - 5, y - 25, 260, 40 + (numTareas * 25), 15, 15);
+        }
+
+        g2.setFont(cargarFuente(22f));
+        g2.setColor(new Color(255, 255, 100)); // Amarillo para el título "Tareas"
+        g2.drawString("TAREAS", x, y);
+        y += 30;
+        
+        // Detectar si estamos sobre alguna zona de tarea para resaltarla
+        String tareaCercana = "";
+        Mapa mapa = estadoJuego.getMapa();
+        if (mapa != null) {
+            for (com.amongus.project.modelo.TareaMapa tm : mapa.getTareasDisponibles()) {
+                if (local.getHitbox().intersects(tm.getZona())) {
+                    tareaCercana = tm.getNombre();
+                    break;
+                }
+            }
+        }
+
+        // Tareas Completadas (Verde)
+        g2.setFont(cargarFuente(18f));
+        for (String t : local.getTareasCompletadas()) {
+            g2.setColor(new Color(0, 255, 0, 180));
+            g2.drawString("✔ " + formatearNombreTarea(t), x + 10, y);
+            y += 25;
+        }
+        
+        // Tareas Pendientes
+        for (String t : local.getTareasPendientes()) {
+            if (t.equals(tareaCercana)) {
+                g2.setColor(Color.YELLOW); // Resaltar si estamos encima de la zona
+                g2.setFont(cargarFuente(20f)); // Un poco más grande
+                g2.drawString("➜ " + formatearNombreTarea(t), x + 5, y);
+            } else {
+                g2.setColor(Color.WHITE);
+                g2.setFont(cargarFuente(18f));
+                g2.drawString("☐ " + formatearNombreTarea(t), x + 10, y);
+            }
+            y += 25;
+        }
+        
+        g2.dispose();
+    }
+
+    private String formatearNombreTarea(String id) {
+        switch(id.toLowerCase()) {
+            case "simon": return "Reactor: Simon Dice";
+            case "energia": return "Distribucion Energia";
+            case "numeros": return "Unlock Manifolds";
+            case "cables": return "Arreglar Cables";
+            case "asteroides": return "Armas: Asteroides";
+            case "tarjeta": return "Admin: Pasar Tarjeta";
+            case "calibrar": return "Calibrar Distribuidor";
+            case "download": return "Descargar Datos";
+            default: return id;
+        }
     }
 
     /**
@@ -820,6 +947,7 @@ public class PanelJuego extends JPanel {
         rectReport = new Rectangle(w - (btnSize + gap) * 2, h - btnSize - gap, btnSize, btnSize);
         rectVent = new Rectangle(w - btnSize - gap, h - (btnSize + gap) * 2, btnSize, btnSize);
         rectSabotage = new Rectangle(w - (btnSize + gap) * 2, h - (btnSize + gap) * 2, btnSize, btnSize);
+        rectUse = new Rectangle(w - btnSize - gap, h - (btnSize + gap) * 2, btnSize, btnSize); // Mismo lugar que Vent
         
         int emergencyX = w - (btnSize + gap) * 2 + (local.isImpostor() ? 40 : 20);
         int emergencyY = h - (btnSize + gap) * 2 - gap - (btnSize / 2) - (local.isImpostor() ? 20 : 10);
@@ -850,6 +978,9 @@ public class PanelJuego extends JPanel {
                     
                     int cdSabotaje = local.getCooldownSabotaje();
                     dibujarBotonAccion(g2hud, "Sabotaje_boton.png", rectSabotage, manejadorEntrada.accionSabotaje, cdSabotaje <= 0, cdSabotaje);
+                } else {
+                    // Botón USAR para tripulantes
+                    dibujarBotonAccion(g2hud, "Ventana_boton.png", rectUse, manejadorEntrada.accionUsar, true, 0);
                 }
             } finally {
                 g2hud.dispose(); // Un solo dispose para todos los botones

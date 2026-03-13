@@ -123,11 +123,13 @@ public class AtencionJugador extends Thread { // Heredamos de Thread para que co
                         Servidor.registrarVoto(partes[0], partes[1]);
                     } catch (Exception e) {}
                 }
-                // si alguien termina todas sus tareas
-                else if (lineaRecibida.startsWith("TAREA_LISTA:")) {
-                    Servidor.enviarATodos(lineaRecibida);
+                // si alguien completa una tarea individual
+                else if (lineaRecibida.startsWith("TAREA_COMPLETADA:")) {
+                    String tarea = lineaRecibida.substring(17);
+                    System.out.println("Jugador " + nombreJugador + " completo tarea: " + tarea);
+                    Servidor.registrarProgresoTarea(nombreJugador, tarea);
                 }
-                // Si alguien activa un sabotaje
+                // si alguien activa un sabotaje
                 else if (lineaRecibida.startsWith("SABOTAJE:")) {
                     Servidor.enviarATodos(lineaRecibida);
                 }

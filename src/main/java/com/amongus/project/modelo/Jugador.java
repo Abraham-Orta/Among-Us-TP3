@@ -43,6 +43,12 @@ public class Jugador extends Personaje {
     private int cooldownVentilacion = 0;
     private int cooldownReporte     = 0;
     private int cooldownSabotaje    = 0;
+    private int cooldownTarea       = 0;
+    
+    // Tareas
+    private java.util.List<String> tareasPendientes = new java.util.ArrayList<>();
+    private java.util.List<String> tareasCompletadas = new java.util.ArrayList<>();
+    private int totalTareas = 0;
     
     // Contadores
     private int usosVentilacion = 0;
@@ -111,6 +117,7 @@ public class Jugador extends Personaje {
         if (cooldownVentilacion > 0) cooldownVentilacion--;
         if (cooldownReporte     > 0) cooldownReporte--;
         if (cooldownSabotaje    > 0) cooldownSabotaje--;
+        if (cooldownTarea       > 0) cooldownTarea--;
 
         if (vivo) {
             if (impostor) {
@@ -123,6 +130,9 @@ public class Jugador extends Personaje {
                 if (entrada.accionSabotaje && cooldownSabotaje <= 0) {
                     ejecutarSabotaje();
                 }
+            }
+            if (entrada.accionUsar && cooldownTarea <= 0) {
+                intentarRealizarTarea();
             }
             if (entrada.accionReportar && cooldownReporte <= 0) {
                 intentarReportar();
@@ -247,6 +257,23 @@ public class Jugador extends Personaje {
         }
     }
 
+    private void intentarRealizarTarea() {
+        if (estadoJuego == null) return;
+        Mapa mapa = estadoJuego.getMapa();
+        if (mapa == null) return;
+
+        for (TareaMapa tarea : mapa.getTareasDisponibles()) {
+            if (this.hitbox.intersects(tarea.getZona())) {
+                // Verificar si el jugador tiene esta tarea pendiente o si es impostor fingiendo
+                if (tareasPendientes.contains(tarea.getNombre()) || impostor) {
+                    estadoJuego.setTareaAabrir(tarea.getNombre());
+                    cooldownTarea = 60; // 1 segundo de cooldown
+                    break;
+                }
+            }
+        }
+    }
+
     // ==========================================
     //  RED
     // ==========================================
@@ -315,6 +342,11 @@ public class Jugador extends Personaje {
     public int getCooldownSabotaje()       { return cooldownSabotaje; }
     public int getCooldownReporte()        { return cooldownReporte; }
     public int getCooldownVentilacion()    { return cooldownVentilacion; }
+
+    public java.util.List<String> getTareasPendientes() { return tareasPendientes; }
+    public java.util.List<String> getTareasCompletadas() { return tareasCompletadas; }
+    public int getTotalTareas() { return totalTareas; }
+    public void setTotalTareas(int t) { this.totalTareas = t; }
 
     public boolean hayVictimaCerca() {
         if (!isVivo() || !isImpostor()) return false;

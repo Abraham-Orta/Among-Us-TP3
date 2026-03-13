@@ -25,8 +25,13 @@ public class TareaSimon extends JPanel {
     
     private JButton[] botones = new JButton[9];
     private JLabel etiquetaEstado;
+    private TareaCompletadaListener listener;
     private final Color COLOR_REPOSO = new Color(40, 45, 52);
     private final Color COLOR_ACTIVO = new Color(0, 255, 255);
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
 
     public TareaSimon() {
         setPreferredSize(new Dimension(ANCHO, ALTO));
@@ -112,14 +117,16 @@ public class TareaSimon extends JPanel {
     }
 
     private void procesarClickJugador(int id) {
-        if (mostrandoSecuencia || completada) return;
+        if (mostrandoSecuencia || completada || pasoJugador >= secuencia.size()) return;
 
         if (id == secuencia.get(pasoJugador)) {
             new Thread(() -> iluminarBoton(id, 150)).start();
             pasoJugador++;
+            
             if (pasoJugador == secuencia.size()) {
+                mostrandoSecuencia = true; // Bloqueo inmediato de clicks
                 new Thread(() -> {
-                    try { Thread.sleep(500); } catch (Exception e) {}
+                    try { Thread.sleep(800); } catch (Exception e) {}
                     iniciarNuevoNivel();
                 }).start();
             }
@@ -150,6 +157,9 @@ public class TareaSimon extends JPanel {
         completada = true;
         etiquetaEstado.setText("TAREA COMPLETADA");
         etiquetaEstado.setForeground(Color.GREEN);
+        
+        if (listener != null) listener.onTareaCompletada();
+        
         // Sonido de victoria (Escala ascendente rápida)
         new Thread(() -> {
             emitirSonido(523, 100); emitirSonido(659, 100); emitirSonido(783, 100); emitirSonido(1046, 300);

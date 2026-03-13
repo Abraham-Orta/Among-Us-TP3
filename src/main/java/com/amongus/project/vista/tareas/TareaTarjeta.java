@@ -28,7 +28,12 @@ public class TareaTarjeta extends JPanel implements MouseListener, MouseMotionLi
     private long tiempoInicio;
     private boolean arrastrando = false;
     private boolean completada = false;
-    
+    private TareaCompletadaListener listener;
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
+
     public boolean isCompletada() {
         return completada;
     }
@@ -245,6 +250,7 @@ public class TareaTarjeta extends JPanel implements MouseListener, MouseMotionLi
                 luzRoja = false;
                 luzVerde = true;
                 completada = true;
+                if (listener != null) listener.onTareaCompletada();
             }
             repaint();
         }

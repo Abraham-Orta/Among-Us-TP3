@@ -26,6 +26,11 @@ public class TareaAsteroides extends JPanel implements MouseListener, MouseMotio
     private Timer timerJuego;
     private Point mousePos = new Point(0, 0);
     private boolean completada = false;
+    private TareaCompletadaListener listener;
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
     
     public boolean isCompletada() {
         return completada;
@@ -147,7 +152,10 @@ public class TareaAsteroides extends JPanel implements MouseListener, MouseMotio
                 listaAsteroides.remove(i);
                 destruidos++;
                 impacto = true;
-                if (destruidos >= OBJETIVO) completada = true;
+                if (destruidos >= OBJETIVO) {
+                    completada = true;
+                    if (listener != null) listener.onTareaCompletada();
+                }
                 break;
             }
         }

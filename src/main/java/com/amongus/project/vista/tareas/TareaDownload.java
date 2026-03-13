@@ -20,7 +20,12 @@ public class TareaDownload extends JPanel {
     private float progreso = 0.0f; // 0.0 a 100.0
     private boolean descargando = false;
     private boolean completada = false;
+    private TareaCompletadaListener listener;
     private Timer timer;
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
     
     public boolean isCompletada() {
         return completada;
@@ -52,6 +57,7 @@ public class TareaDownload extends JPanel {
                 descargando = false;
                 completada = true;
                 timer.stop();
+                if (listener != null) listener.onTareaCompletada();
                 repaint();
             }
         });

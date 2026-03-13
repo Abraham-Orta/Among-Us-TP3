@@ -27,6 +27,8 @@ public class EstadoJuego {
 
     // GANADOR DE LA PARTIDA (Se asigna al finalizar)
     private String mensajeGanador = "";
+    private String tareaAabrir = null;
+    private String progresoTareas = "0/0";
 
     public EstadoJuego() {
         jugadores = new ArrayList<>();
@@ -78,4 +80,10 @@ public class EstadoJuego {
 
     public String getMensajeGanador() { return mensajeGanador; }
     public void setMensajeGanador(String mensajeGanador) { this.mensajeGanador = mensajeGanador; }
+    
+    public String getTareaAabrir() { return tareaAabrir; }
+    public void setTareaAabrir(String t) { this.tareaAabrir = t; }
+
+    public String getProgresoTareas() { return progresoTareas; }
+    public void setProgresoTareas(String p) { this.progresoTareas = p; }
 }

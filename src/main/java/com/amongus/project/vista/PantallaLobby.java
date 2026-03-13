@@ -434,6 +434,22 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
                 actualizarListaJugadores();
             });
 
+        } else if (mensaje.startsWith("TAREAS:") || mensaje.startsWith("TAREAS_FALSAS:")) {
+            System.out.println("[LOBBY] Recibidas tareas anticipadas: " + mensaje);
+            // Guardar para que cuando se cree el jugador local, ya las tenga
+            String lista = mensaje.substring(mensaje.indexOf(":") + 1);
+            String[] tareas = lista.split(",");
+            Jugador local = estadoJuego.getJugadorLocal();
+            if (local != null) {
+                local.getTareasPendientes().clear();
+                for (String t : tareas) local.getTareasPendientes().add(t);
+                local.setTotalTareas(tareas.length);
+            } else {
+                // Si el jugador aún no existe (porque JUEGO_INICIADO viene después), 
+                // podemos guardarlas en el EstadoJuego o una variable temporal.
+                // Pero usualmente ROL y TAREAS vienen justo después de JUEGO_INICIADO.
+            }
+
         } else if (mensaje.startsWith("SOMBRERO:")) {
             try {
                 String[] p = mensaje.split(":");

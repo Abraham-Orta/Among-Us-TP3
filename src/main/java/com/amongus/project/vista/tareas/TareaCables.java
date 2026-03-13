@@ -29,7 +29,14 @@ public class TareaCables extends JPanel implements MouseListener, MouseMotionLis
     private boolean[] conectados;
     private int arrastrando = -1;
     private Point mousePos = new Point(0, 0);
-    private boolean completada = false; public boolean isCompletada() { return completada; }
+    private boolean completada = false; 
+    private TareaCompletadaListener listener;
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
+
+    public boolean isCompletada() { return completada; }
 
     public TareaCables() {
         setPreferredSize(new Dimension(ANCHO, ALTO));
@@ -172,7 +179,10 @@ public class TareaCables extends JPanel implements MouseListener, MouseMotionLis
                     
                     if (ordenDerecha.get(i) == colorMio) {
                         conectados[arrastrando] = true;
-                        if (todoConectado()) completada = true;
+                        if (todoConectado()) {
+                            completada = true;
+                            if (listener != null) listener.onTareaCompletada();
+                        }
                     }
                 }
             }

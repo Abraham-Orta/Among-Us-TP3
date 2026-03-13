@@ -29,6 +29,7 @@ public class Mapa {
     private List<Rectangle> obstaculos;
     private List<Rectangle> alcantarillas; // Vías de acceso rápido (vents)
     private List<Rectangle> botones;
+    private List<TareaMapa> tareasDisponibles;
     private Image imagenFondo;
 
     /**
@@ -41,6 +42,7 @@ public class Mapa {
         this.obstaculos    = new ArrayList<>();
         this.alcantarillas = new ArrayList<>();
         this.botones       = new ArrayList<>();
+        this.tareasDisponibles = new ArrayList<>();
         // Fix #2: Eliminar llamadas duplicadas — antes se llamaba 2 veces a cada uno
         cargarImagenFondo(nombreArchivoTmj);
         crearMapaPrueba();
@@ -61,6 +63,9 @@ public class Mapa {
             botones.add(new Rectangle(
                 (int) rectDouble.x, (int) rectDouble.y,
                 (int) rectDouble.width, (int) rectDouble.height));
+        }
+        for (TareaMapa t : cargador.getTareas()) {
+            tareasDisponibles.add(t);
         }
     }
     
@@ -205,6 +210,7 @@ public class Mapa {
     public List<Rectangle> getObstaculos()    { return obstaculos; }
     public List<Rectangle> getAlcantarillas() { return alcantarillas; }
     public List<Rectangle> getBotones()       { return botones; }
+    public List<TareaMapa> getTareasDisponibles() { return tareasDisponibles; }
     public int getAncho()                      { return ancho; }
     public int getAlto()                       { return alto; }
 }

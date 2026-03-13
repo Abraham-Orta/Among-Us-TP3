@@ -40,6 +40,22 @@ public class Servidor {
     public static boolean enVotacion = false;
     private static Map<String, String> votosActuales = new HashMap<>();
 
+    // TAREAS GLOBALES
+    public static int totalTareasTripulantes = 0;
+    public static int tareasCompletadasGlobales = 0;
+
+    public static synchronized void registrarProgresoTarea(String jugador, String tarea) {
+        tareasCompletadasGlobales++;
+        System.out.println("Progreso Global: " + tareasCompletadasGlobales + "/" + totalTareasTripulantes);
+        
+        // Broadcast del progreso para la barra verde
+        enviarATodos("PROGRESO_TAREAS:" + tareasCompletadasGlobales + "/" + totalTareasTripulantes);
+        
+        if (tareasCompletadasGlobales >= totalTareasTripulantes && totalTareasTripulantes > 0) {
+            finalizarPartida("Tripulantes");
+        }
+    }
+
     public static void main(String[] args) {
         System.out.println("Iniciando el servidor de Among Us...");
 
@@ -157,6 +173,40 @@ public class Servidor {
 
         // Avisar a todos que la partida arranca con el mapa elegido
         enviarATodos("JUEGO_INICIADO:" + mapaElegido);
+
+        // --- ASIGNAR TAREAS CON RETRASO ---
+        // Pequeña espera para que los clientes abran el JFrame del juego
+        new Thread(() -> {
+            try { Thread.sleep(1000); } catch (InterruptedException e) {}
+
+            totalTareasTripulantes = 0;
+            tareasCompletadasGlobales = 0;
+            String[] poolTareas = {"simon", "energia", "numeros", "cables", "asteroides", "tarjeta", "calibrar", "download"};
+            
+            for (AtencionJugador j : listaJugadores) {
+                if (!j.esImpostor) {
+                    // Seleccionar 5 tareas aleatorias para cada tripulante
+                    java.util.List<String> elegidas = new java.util.ArrayList<>(java.util.Arrays.asList(poolTareas));
+                    java.util.Collections.shuffle(elegidas);
+                    java.util.List<String> misTareas = elegidas.subList(0, 5);
+                    String msgTareas = "TAREAS:" + String.join(",", misTareas);
+                    
+                    System.out.println("[SERVIDOR] Enviando tareas REALES a " + j.getNombreJugador() + ": " + msgTareas);
+                    j.enviarMensaje(msgTareas);
+                    totalTareasTripulantes += misTareas.size();
+                } else {
+                    // Impostores: 4 Tareas falsas aleatorias
+                    java.util.List<String> elegidas = new java.util.ArrayList<>(java.util.Arrays.asList(poolTareas));
+                    java.util.Collections.shuffle(elegidas);
+                    java.util.List<String> misTareas = elegidas.subList(0, 4);
+                    String msgTareas = "TAREAS_FALSAS:" + String.join(",", misTareas);
+                    
+                    System.out.println("[SERVIDOR] Enviando tareas FALSAS a " + j.getNombreJugador());
+                    j.enviarMensaje(msgTareas);
+                }
+            }
+            System.out.println("Tareas totales asignadas: " + totalTareasTripulantes);
+        }).start();
     }
 
     public static void finalizarPartida(String equipoGanador) {

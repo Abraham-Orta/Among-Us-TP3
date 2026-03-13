@@ -30,6 +30,7 @@ public class ManejadorEntrada extends KeyAdapter {
     public boolean accionVentilar = false; // E → Alcantarilla
     public boolean accionReportar = false; // R → Reportar cadáver
     public boolean accionSabotaje = false; // H → Sabotaje de luces
+    public boolean accionUsar     = false; // E → Tareas / Usar
     public boolean accionEmergencia = false; // HUD → Botón de Emergencia
 
     // --- MODO DESARROLLADOR ---
@@ -141,9 +142,11 @@ public class ManejadorEntrada extends KeyAdapter {
             accionMatar    = true;
         }
         if (c == KeyEvent.VK_E) {
-            // solo suena si el jugador es impostor
+            // solo suena si el jugador es impostor (para ventilar) o si es tripulante (para tareas)
             if (!accionVentilar && esImpostor) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
+            if (!accionUsar && !esImpostor) com.amongus.project.vista.ReproductorMusica.reproducirEfecto("UI_boton.wav");
             accionVentilar = true;
+            accionUsar     = true;
         }
         if (c == KeyEvent.VK_R) {
             // este sonido de reportar suena para todos (tripulantes e impostores)
@@ -185,7 +188,10 @@ public class ManejadorEntrada extends KeyAdapter {
         if (c == KeyEvent.VK_D || c == KeyEvent.VK_RIGHT) derecha   = false;
 
         if (c == KeyEvent.VK_Q) accionMatar    = false;
-        if (c == KeyEvent.VK_E) accionVentilar = false;
+        if (c == KeyEvent.VK_E) {
+            accionVentilar = false;
+            accionUsar     = false;
+        }
         if (c == KeyEvent.VK_R) accionReportar = false;
         if (c == KeyEvent.VK_H) accionSabotaje = false;
         if (c == KeyEvent.VK_V) accionEmergencia = false;

@@ -12,6 +12,9 @@ import com.amongus.project.data.GestorDatos;
 import com.amongus.project.red.Cliente;
 
 import javax.swing.SwingUtilities;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
+import javax.swing.JPanel;
 import java.util.List;
 
 public class BucleJuego implements Runnable, Cliente.MensajeListener {
@@ -25,6 +28,7 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private int tripulantesConTareasListas = 0;
     private int framesRevelacion = 0; // contador para la pantalla inicial
     private boolean finalizando = false; // Flag para evitar múltiples llamadas al terminar el juego
+    private boolean interfazTareaAbierta = false; 
 
     private final int  FPS            = 60;
     private final long TIEMPO_OBJETIVO = 1_000_000_000L / FPS;
@@ -221,6 +225,38 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             }
         } else if (mensaje.startsWith("FIN:")) {
             finalizarJuego("Ganan los " + mensaje.substring(4));
+        } else if (mensaje.startsWith("TAREAS:")) {
+            System.out.println("[CLIENTE] Recibidas tareas REALES: " + mensaje);
+            try {
+                String[] tareas = mensaje.substring(7).split(",");
+                Jugador local = estado.getJugadorLocal();
+                if (local != null) {
+                    local.getTareasPendientes().clear();
+                    local.getTareasCompletadas().clear();
+                    for (String t : tareas) {
+                        local.getTareasPendientes().add(t);
+                    }
+                    local.setTotalTareas(tareas.length);
+                    System.out.println("[CLIENTE] Tareas cargadas en Jugador: " + local.getTareasPendientes().size());
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        } else if (mensaje.startsWith("TAREAS_FALSAS:")) {
+            System.out.println("[CLIENTE] Recibidas tareas FALSAS: " + mensaje);
+            try {
+                String[] tareas = mensaje.substring(14).split(",");
+                Jugador local = estado.getJugadorLocal();
+                if (local != null) {
+                    local.getTareasPendientes().clear();
+                    local.getTareasCompletadas().clear();
+                    for (String t : tareas) {
+                        local.getTareasPendientes().add(t);
+                    }
+                    local.setTotalTareas(tareas.length);
+                    System.out.println("[CLIENTE] Tareas FALSAS cargadas en Jugador: " + local.getTareasPendientes().size());
+                }
+            } catch (Exception e) { e.printStackTrace(); }
+        } else if (mensaje.startsWith("PROGRESO_TAREAS:")) {
+            estado.setProgresoTareas(mensaje.substring(16));
         } else if (mensaje.equals("SABOTAJE:LUCES:ON")) {
             estado.setLucesSaboteadas(true);
         } else if (mensaje.startsWith("SABOTAJE:LUCES:OFF")) {
@@ -300,6 +336,20 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             }
 
         } else if (fase == EstadoJuego.Fase.JUGANDO) {
+            
+            // Abrir tareas pendientes si el flag está activo
+            String tareaParaAbrir = estado.getTareaAabrir();
+            if (tareaParaAbrir != null && !interfazTareaAbierta) {
+                estado.setTareaAabrir(null); // Consumir el flag
+                interfazTareaAbierta = true; // BLOQUEO
+                
+                // Forzar reset de la tecla para que no se auto-repita
+                if (panelJuego.getManejadorEntrada() != null) {
+                    panelJuego.getManejadorEntrada().accionUsar = false;
+                }
+
+                SwingUtilities.invokeLater(() -> abrirInterfazTarea(tareaParaAbrir));
+            }
 
             // Actualizar físicas y teclado del jugador local con Delta Time
             Jugador jugadorLocal = estado.getJugadorLocal();
@@ -367,5 +417,101 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
 
     private void renderizar() {
         if (panelJuego != null) SwingUtilities.invokeLater(panelJuego::repaint);
+    }
+
+    private void abrirInterfazTarea(String nombreTarea) {
+        System.out.println("Abriendo tarea en UI: " + nombreTarea);
+        
+        JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(panelJuego);
+        JDialog dialogo = new JDialog(parent, "Tarea: " + nombreTarea, true);
+        dialogo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+        
+        // Cuando se cierre la ventana (por cualquier motivo), liberamos el bloqueo
+        dialogo.addWindowListener(new java.awt.event.WindowAdapter() {
+            @Override
+            public void windowClosed(java.awt.event.WindowEvent e) {
+                interfazTareaAbierta = false;
+            }
+        });
+        
+        JPanel panelTarea = null;
+        
+        // Mapear el nombre a la clase de tarea
+        switch (nombreTarea.toLowerCase()) {
+            case "simon":
+                com.amongus.project.vista.tareas.TareaSimon simon = new com.amongus.project.vista.tareas.TareaSimon();
+                simon.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = simon;
+                break;
+            case "energia":
+                com.amongus.project.vista.tareas.TareaEnergia energia = new com.amongus.project.vista.tareas.TareaEnergia();
+                energia.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = energia;
+                break;
+            case "numeros":
+                com.amongus.project.vista.tareas.TareaNumeros numeros = new com.amongus.project.vista.tareas.TareaNumeros();
+                numeros.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = numeros;
+                break;
+            case "cables":
+                com.amongus.project.vista.tareas.TareaCables cables = new com.amongus.project.vista.tareas.TareaCables();
+                cables.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = cables;
+                break;
+            case "asteroides":
+                com.amongus.project.vista.tareas.TareaAsteroides asteroides = new com.amongus.project.vista.tareas.TareaAsteroides();
+                asteroides.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = asteroides;
+                break;
+            case "tarjeta":
+                com.amongus.project.vista.tareas.TareaTarjeta tarjeta = new com.amongus.project.vista.tareas.TareaTarjeta();
+                tarjeta.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = tarjeta;
+                break;
+            case "calibrar":
+                com.amongus.project.vista.tareas.TareaCalibrar calibrar = new com.amongus.project.vista.tareas.TareaCalibrar();
+                calibrar.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = calibrar;
+                break;
+            case "download":
+                com.amongus.project.vista.tareas.TareaDownload download = new com.amongus.project.vista.tareas.TareaDownload();
+                download.setTareaCompletadaListener(() -> finalizarTareaEnJuego(nombreTarea, dialogo));
+                panelTarea = download;
+                break;
+            default:
+                System.err.println("Tarea no reconocida: " + nombreTarea);
+                return;
+        }
+        
+        if (panelTarea != null) {
+            dialogo.add(panelTarea);
+            dialogo.pack();
+            dialogo.setLocationRelativeTo(parent);
+            dialogo.setVisible(true);
+        }
+    }
+
+    private void finalizarTareaEnJuego(String nombreTarea, JDialog dialogo) {
+        System.out.println("Tarea finalizada exitosamente: " + nombreTarea);
+        
+        // 1. Marcar como completada localmente
+        Jugador local = estado.getJugadorLocal();
+        if (local != null) {
+            if (local.getTareasPendientes().contains(nombreTarea)) {
+                local.getTareasPendientes().remove(nombreTarea);
+                local.getTareasCompletadas().add(nombreTarea);
+                
+                // 2. Notificar al servidor
+                if (clienteRed != null) {
+                    clienteRed.enviarMensaje("TAREA_COMPLETADA:" + nombreTarea);
+                }
+            }
+        }
+        
+        // 3. Esperar un poco para que el jugador vea el mensaje de éxito y cerrar
+        new Thread(() -> {
+            try { Thread.sleep(1000); } catch (InterruptedException e) {}
+            SwingUtilities.invokeLater(() -> dialogo.dispose());
+        }).start();
     }
 }

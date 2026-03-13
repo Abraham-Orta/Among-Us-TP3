@@ -21,7 +21,12 @@ public class TareaNumeros extends JPanel {
     private ArrayList<Integer> numeros;
     private int siguienteEsperado = 1;
     private boolean completada = false;
+    private TareaCompletadaListener listener;
     private JPanel panelBotones;
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
     private Color colorFondo = new Color(20, 23, 28);
 
     public TareaNumeros() {
@@ -76,7 +81,10 @@ public class TareaNumeros extends JPanel {
                 if (valor == siguienteEsperado) {
                     activado = true;
                     siguienteEsperado++;
-                    if (siguienteEsperado > 10) completada = true;
+                    if (siguienteEsperado > 10) {
+                        completada = true;
+                        if (listener != null) listener.onTareaCompletada();
+                    }
                     repaint();
                 } else {
                     efectoError();

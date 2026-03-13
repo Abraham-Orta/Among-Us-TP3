@@ -25,11 +25,13 @@ public class CargadorNivel {
     private List<Rectangle2D.Double> colisiones;
     private List<Rectangle2D.Double> alcantarillas;
     private List<Rectangle2D.Double> botonesEmergencia;
+    private List<TareaMapa> tareas;
 
     public CargadorNivel(String rutaArchivo) {
         colisiones = new ArrayList<>();
         alcantarillas = new ArrayList<>();
         botonesEmergencia = new ArrayList<>();
+        tareas = new ArrayList<>();
         cargarArchivo(rutaArchivo);
     }
 
@@ -123,6 +125,20 @@ public class CargadorNivel {
                     }
                     System.out.println("Cargados " + botonesEmergencia.size() + " botones de emergencia.");
                 }
+
+                else if (tipoCapa.equals("objectgroup") && nombreCapa.equals("zonas_tareas")) {
+                    JSONArray objects = layer.getJSONArray("objects");
+                    for (int j = 0; j < objects.length(); j++) {
+                        JSONObject obj = objects.getJSONObject(j);
+                        String nombreTarea = obj.optString("name", "tarea");
+                        double objX = obj.getDouble("x");
+                        double objY = obj.getDouble("y");
+                        double objWidth = obj.getDouble("width");
+                        double objHeight = obj.getDouble("height");
+                        tareas.add(new TareaMapa(nombreTarea, new java.awt.Rectangle((int)objX, (int)objY, (int)objWidth, (int)objHeight)));
+                    }
+                    System.out.println("Cargadas " + tareas.size() + " zonas de tareas.");
+                }
             }
         } catch (Exception e) {
             System.out.println("Error procesando el JSON: " + e.getMessage());
@@ -137,4 +153,5 @@ public class CargadorNivel {
     public int getTileHeight() { return tileHeight; }
     public List<Rectangle2D.Double> getAlcantarillas() { return alcantarillas; }
     public List<Rectangle2D.Double> getBotonesEmergencia() { return botonesEmergencia; }
+    public List<TareaMapa> getTareas() { return tareas; }
 }

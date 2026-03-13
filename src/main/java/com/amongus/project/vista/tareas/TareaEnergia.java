@@ -21,7 +21,12 @@ public class TareaEnergia extends JPanel {
     private final int ANCHO = 700, ALTO = 500;
     private Nodo[] nodos = new Nodo[6];
     private boolean completada = false;
+    private TareaCompletadaListener listener;
     private final Color COLOR_FONDO = new Color(25, 25, 30);
+
+    public void setTareaCompletadaListener(TareaCompletadaListener listener) {
+        this.listener = listener;
+    }
     private final Color COLOR_ENERGIA = new Color(255, 215, 0); 
 
     public TareaEnergia() {
@@ -84,6 +89,7 @@ public class TareaEnergia extends JPanel {
         }
         if (todoAlineado) {
             completada = true;
+            if (listener != null) listener.onTareaCompletada();
             // Sonido de éxito
             new Thread(() -> {
                 emitirSonidoMejorado(800, 100);
