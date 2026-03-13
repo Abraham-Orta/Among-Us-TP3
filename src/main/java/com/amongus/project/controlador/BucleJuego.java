@@ -354,7 +354,9 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             // Actualizar físicas y teclado del jugador local con Delta Time
             Jugador jugadorLocal = estado.getJugadorLocal();
             if (jugadorLocal != null) {
-                jugadorLocal.actualizar(panelJuego.getManejadorEntrada(), delta);
+                if (!interfazTareaAbierta) {
+                    jugadorLocal.actualizar(panelJuego.getManejadorEntrada(), delta);
+                }
             }
 
             // Actualizar interpolación visual de TODOS los jugadores
@@ -423,7 +425,7 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
         System.out.println("Abriendo tarea en UI: " + nombreTarea);
         
         JFrame parent = (JFrame) SwingUtilities.getWindowAncestor(panelJuego);
-        JDialog dialogo = new JDialog(parent, "Tarea: " + nombreTarea, true);
+        JDialog dialogo = new JDialog(parent, "Tarea: " + nombreTarea, false);
         dialogo.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
         
         // Cuando se cierre la ventana (por cualquier motivo), liberamos el bloqueo

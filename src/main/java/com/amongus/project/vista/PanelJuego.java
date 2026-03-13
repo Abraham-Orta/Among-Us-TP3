@@ -920,7 +920,7 @@ public class PanelJuego extends JPanel {
         switch(id.toLowerCase()) {
             case "simon": return "Reactor: Simon Dice";
             case "energia": return "Distribucion Energia";
-            case "numeros": return "Unlock Manifolds";
+            case "numeros": return "Pulsar Números";
             case "cables": return "Arreglar Cables";
             case "asteroides": return "Armas: Asteroides";
             case "tarjeta": return "Admin: Pasar Tarjeta";
