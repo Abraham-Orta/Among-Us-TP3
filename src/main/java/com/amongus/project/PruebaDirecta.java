@@ -31,7 +31,11 @@ public class PruebaDirecta {
         lanzarCliente("Jugador3", false);
         lanzarCliente("Jugador4", false);
         lanzarCliente("Jugador5", false);
-        lanzarCliente("Jugadord5", false);
+        lanzarCliente("Jugador6", false);
+        lanzarCliente("Jugador7", false);
+        lanzarCliente("Jugador8", false);
+        lanzarCliente("Jugador9", false);
+        lanzarCliente("Jugador10", false);
 
         System.out.println("[INFO] Se han lanzado los 6 clientes automáticamente.");
     }

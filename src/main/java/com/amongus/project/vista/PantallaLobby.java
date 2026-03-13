@@ -489,6 +489,16 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             }
             estadoJuego.setMapa(mapa);
 
+            // --- POSICIONAMIENTO INICIAL ---
+            // Buscamos el botón de emergencia en el mapa para aparecer cerca de él
+            int spawnX = 1200; // Por defecto si no hay mapa o botones
+            int spawnY = 1000;
+            if (mapa != null && !mapa.getBotones().isEmpty()) {
+                Rectangle btn = mapa.getBotones().get(0);
+                spawnX = btn.x + btn.width / 2;
+                spawnY = (btn.y + btn.height / 2) - 15; // 100px más arriba del botón
+            }
+
             // Paleta de colores para todos los jugadores
             Color[] todosColores = {Color.RED, Color.BLUE, Color.GREEN, Color.YELLOW, Color.CYAN,
                                     Color.MAGENTA, Color.ORANGE, Color.PINK, Color.WHITE};
@@ -504,8 +514,14 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
             if (miIndice < 0) miIndice = 0;
             Color miColor = todosColores[miIndice % todosColores.length];
 
+            // Posicionamos en un círculo alrededor del botón para que no se pisen
+            double angulo = (2 * Math.PI / Math.max(1, jugadoresConectados.size())) * miIndice;
+            int radioSpawn = 115;
+            int finalX = spawnX + (int)(Math.cos(angulo) * radioSpawn);
+            int finalY = spawnY + (int)(Math.sin(angulo) * radioSpawn);
+
             // Crear nuestro propio jugador local
-            Jugador jugadorLocal = new Jugador(nombreJugador.trim(), 100, 100, miColor, soyImpostor);
+            Jugador jugadorLocal = new Jugador(nombreJugador.trim(), finalX, finalY, miColor, soyImpostor);
             jugadorLocal.setSombrero(listaSombreros.get(indiceSombreroActual));
             jugadorLocal.setClienteRed(this.cliente);
             jugadorLocal.setEstadoJuego(estadoJuego);
@@ -528,7 +544,12 @@ public class PantallaLobby extends JFrame implements Cliente.MensajeListener {
                         }
                     }
 
-                    Jugador otro = new Jugador(nombreRemoto, 150 + (idx * 50), 100, colorRemoto, esRemotoImpostor);
+                    // Calcular posición para el remoto en el mismo círculo
+                    double anguloRemoto = (2 * Math.PI / Math.max(1, jugadoresConectados.size())) * idx;
+                    int rx = spawnX + (int)(Math.cos(anguloRemoto) * radioSpawn);
+                    int ry = spawnY + (int)(Math.sin(anguloRemoto) * radioSpawn);
+
+                    Jugador otro = new Jugador(nombreRemoto, rx, ry, colorRemoto, esRemotoImpostor);
                     
                     // ¡CLAVE! Pasamos el sombrero que el servidor nos dijo en el Lobby
                     String sombreroRemoto = sombrerosJugadores.getOrDefault(nombreRemoto, "ninguno");

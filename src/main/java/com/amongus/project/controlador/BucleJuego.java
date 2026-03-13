@@ -22,6 +22,7 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private PanelJuego  panelJuego;
     private EstadoJuego estado;
     private boolean     corriendo = false;
+    private EstadoJuego.Fase faseAnterior = null;
     private Thread      hiloJuego;
     private Cliente     clienteRed;
 
@@ -349,6 +350,18 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private void actualizar(double delta) {
         EstadoJuego.Fase fase = estado.getFaseActual();
 
+        // --- DETECCIÓN DE CAMBIO DE FASE (VOTACION -> JUGANDO) ---
+        if (faseAnterior == EstadoJuego.Fase.VOTACION && fase == EstadoJuego.Fase.JUGANDO) {
+            // Limpiar flags de entrada para evitar que se disparen acciones "fantasma"
+            if (panelJuego.getManejadorEntrada() != null) {
+                panelJuego.getManejadorEntrada().accionUsar = false;
+                panelJuego.getManejadorEntrada().accionEmergencia = false;
+                panelJuego.getManejadorEntrada().accionSabotaje = false;
+            }
+            reposicionarJugadoresAlrededorBoton();
+        }
+        faseAnterior = fase;
+
         if (fase == EstadoJuego.Fase.VOTACION) {
             panelJuego.getPantallaVotacion().actualizar();
 
@@ -535,6 +548,52 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
             dialogo.pack();
             dialogo.setLocationRelativeTo(parent);
             dialogo.setVisible(true);
+        }
+    }
+
+    private void reposicionarJugadoresAlrededorBoton() {
+        System.out.println("[SISTEMA] Reposicionando jugadores después de votación...");
+        com.amongus.project.modelo.Mapa mapa = estado.getMapa();
+        if (mapa == null) return;
+
+        // Buscamos el botón de emergencia
+        int spawnX = 1200; // Por defecto
+        int spawnY = 1000;
+        if (!mapa.getBotones().isEmpty()) {
+            java.awt.Rectangle btn = mapa.getBotones().get(0);
+            spawnX = btn.x + btn.width / 2;
+            spawnY = (btn.y + btn.height / 2) - 15; // 15px más arriba del botón
+        }
+
+        // --- ORDENACIÓN CONSISTENTE ---
+        // Obtenemos todos los jugadores y los ordenamos por nombre para que el índice
+        // sea el mismo en todos los clientes.
+        List<Jugador> jugadores = new java.util.ArrayList<>(estado.getJugadores());
+        jugadores.sort((a, b) -> a.getNombre().compareToIgnoreCase(b.getNombre()));
+
+        int total = jugadores.size();
+        int radioSpawn = 115;
+
+        for (int i = 0; i < total; i++) {
+            Jugador j = jugadores.get(i);
+            double angulo = (2 * Math.PI / Math.max(1, total)) * i;
+            int finalX = spawnX + (int)(Math.cos(angulo) * radioSpawn);
+            int finalY = spawnY + (int)(Math.sin(angulo) * radioSpawn);
+
+            // IMPORTANTE: solo movemos al jugador local para no interferir con la red de otros,
+            // pero cada cliente ejecutará esto localmente para su propio jugador.
+            if (j == estado.getJugadorLocal()) {
+                j.setX(finalX);
+                j.setY(finalY);
+                // Forzamos sincronización inmediata de posición tras la votación
+                if (clienteRed != null) {
+                    clienteRed.enviarMensaje("MOVER:" + j.getNombre() + "," + finalX + "," + finalY);
+                }
+            } else {
+                // Para los remotos, actualizamos su posición visual inmediatamente
+                j.setX(finalX);
+                j.setY(finalY);
+            }
         }
     }
 
