@@ -14,7 +14,11 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.BasicStroke;
 import java.awt.AlphaComposite;
+import java.awt.Shape;
+import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Area;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -645,8 +649,7 @@ public class PanelJuego extends JPanel {
             return;
         }
 
-        // Capa 1: Mapa con viewport clipping (Fix #6)
-        // Se dibuja ANTES del translate, en coordenadas de pantalla, para evitar conflicto de transformaciones.
+        // Capa 1: Mapa (Solo dibujado dentro del "Lente" visual)
         if (mapa != null) {
             mapa.render(g, manejadorEntrada.modoDesarrollador, camX, camY, getWidth(), getHeight());
         }
@@ -741,9 +744,53 @@ public class PanelJuego extends JPanel {
             dibujarTripulante(g, local);
         }
 
-        // Capa 3: Niebla de guerra
+        // Capa 3: Oscuridad externa al rango visual.
+        // Se dibuja un Área restando el círculo de luz de la ventana para oscurecer eficientemente 
+        // y se elimina la necesidad del costoso RadialGradientPaint de dibujarCampoVisual.
         if (local != null && mapa != null) {
-            dibujarCampoVisual(g2d, local, mapa.getAncho(), mapa.getAlto());
+            float radioLuz;
+            if (local.isImpostor()) {
+                radioLuz = 350.0f;
+            } else {
+                radioLuz = estadoJuego.areLucesSaboteadas() ? 50.0f : 180.0f;
+            }
+
+            g2d.translate(camX, camY); // restaurar a coordenadas de pantalla UI
+            
+            // Construir la máscara negra
+            Area pantallaCompleta = new Area(new Rectangle(0, 0, getWidth(), getHeight()));
+            
+            int luzRealX = local.getX() - camX + 15;
+            int luzRealY = local.getY() - camY + 20;
+
+            Shape circuloLuz = new Ellipse2D.Float(
+                luzRealX - radioLuz, 
+                luzRealY - radioLuz, 
+                radioLuz * 2, 
+                radioLuz * 2
+            );
+            
+            pantallaCompleta.subtract(new Area(circuloLuz));
+
+            // Dibujar la oscuridad exterior
+            g2d.setColor(Color.BLACK);
+            g2d.fill(pantallaCompleta);
+            
+            // Agregamos un borde suave (penumbra) en el arco de visión
+            Graphics2D g2soft = (Graphics2D) g.create();
+            java.awt.RadialGradientPaint bordeDifuminado = new java.awt.RadialGradientPaint(
+                new Point2D.Float(luzRealX, luzRealY), radioLuz,
+                new float[]{0.8f, 1.0f},
+                new Color[]{
+                    new Color(0, 0, 0, 0),
+                    new Color(0, 0, 0, 255)
+                }
+            );
+            g2soft.setPaint(bordeDifuminado);
+            g2soft.fill(circuloLuz);
+            g2soft.dispose();
+            
+            g2d.translate(-camX, -camY); // volver al estado normal
         }
 
         g2d.translate(camX, camY);
@@ -779,7 +826,7 @@ public class PanelJuego extends JPanel {
         rectEmergencia = new Rectangle(emergencyX, emergencyY, btnSize, btnSize);
 
         if (local.isVivo()) {
-            // Fix #4: Un solo contexto Graphics2D compartido para todos los botones del HUD
+            // Un solo contexto Graphics2D compartido para todos los botones del HUD
             Graphics2D g2hud = (Graphics2D) g.create();
             try {
                 // Botón Emergencia (Solo si está cerca)
@@ -813,7 +860,7 @@ public class PanelJuego extends JPanel {
     /**
      * Dibuja un botón individual con animación de pulsación, filtro gris si no está habilitado y contador de cooldown
      */
-    // Fix #4: Recibe Graphics2D directamente (el contexto compartido del HUD). No hace create()/dispose().
+    //  Recibe Graphics2D directamente (el contexto compartido del HUD). No hace create()/dispose().
     private void dibujarBotonAccion(Graphics2D g2, String imgName, Rectangle rect, boolean presionado, boolean habilitado, int cooldown) {
         Image img = obtenerImagenFija(imgName);
         if (img == null) return;
@@ -850,47 +897,7 @@ public class PanelJuego extends JPanel {
         }
     }
 
-    // Caché para la niebla de guerra — evita recrear el gradiente 60 veces/segundo
-    private RadialGradientPaint gradCache;
-    private float gradCacheX, gradCacheY, gradCacheRadio;
-
-    private void dibujarCampoVisual(Graphics2D g2d, Jugador local, int anchoMapa, int altoMapa) {
-        float radio;
-        if (local.isImpostor()) {
-            radio = 350.0f;
-        } else {
-            radio = estadoJuego.areLucesSaboteadas() ? 50.0f : 180.0f;
-        }
-        if (radio <= 0) radio = 1.0f;
-
-        float cx = local.getX() + 15;
-        float cy = local.getY() + 20;
-
-        // Solo recrear el gradiente si cambió la posición o el radio
-        if (gradCache == null || cx != gradCacheX || cy != gradCacheY || radio != gradCacheRadio) {
-            gradCache = new RadialGradientPaint(
-                new Point2D.Float(cx, cy), radio,
-                new float[]{0.0f, 0.7f, 1.0f},
-                new Color[]{
-                    new Color(0, 0, 0,   0),
-                    new Color(0, 0, 0, 120),
-                    new Color(0, 0, 0, 255)
-                }
-            );
-            gradCacheX = cx;
-            gradCacheY = cy;
-            gradCacheRadio = radio;
-        }
-
-        Paint original = g2d.getPaint();
-        g2d.setPaint(gradCache);
-        // Pintar un área lo suficientemente grande para cubrir la ventana
-        // sin importar si el jugador está en el borde del mapa
-        int rectX = (int)(cx - getWidth());
-        int rectY = (int)(cy - getHeight());
-        g2d.fillRect(rectX, rectY, getWidth() * 2, getHeight() * 2);
-        g2d.setPaint(original);
-    }
+    // Método dibujarCampoVisual() eliminado por la optimización de Clipping Circular
 
     private void dibujarTripulante(Graphics g, Jugador j) {
         Jugador local = estadoJuego.getJugadorLocal();
@@ -1001,7 +1008,7 @@ public class PanelJuego extends JPanel {
         BufferedImage spriteActual = obtenerSpriteColoreado(rutaMolde, j.getColor(), claveCache);
 
         Graphics2D g2d = (Graphics2D) g.create();
-        // Fix #3: BILINEAR es suficiente para sprites de 40x50px escalados — BICUBIC era innecesariamente caro
+        // BILINEAR es suficiente para sprites de 40x50px escalados — BICUBIC era innecesariamente caro
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 

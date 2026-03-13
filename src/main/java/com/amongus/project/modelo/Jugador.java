@@ -158,7 +158,7 @@ public class Jugador extends Personaje {
             if (victima != this && !victima.isImpostor() && victima.isVivo()) {
                 int dx = this.x - victima.getX();
                 int dy = this.y - victima.getY();
-                // Fix #2: comparar al cuadrado evita Math.sqrt() costoso
+                // comparar al cuadrado evita Math.sqrt() costoso
                 if (dx * dx + dy * dy <= 50 * 50) {
                     victima.setVivo(false);
                     this.iniciarAnimacionAtaque();
@@ -216,7 +216,7 @@ public class Jugador extends Personaje {
                 if (bx == 0 && by == 0) { bx = victima.getX(); by = victima.getY(); }
                 int dx = this.x - bx;
                 int dy = this.y - by;
-                // Fix #2: sin sqrt
+                
                 if (dx * dx + dy * dy <= 80 * 80) {
                     presionarBotonEmergencia();
                     break;
@@ -322,7 +322,7 @@ public class Jugador extends Personaje {
             if (victima != this && !victima.isImpostor() && victima.isVivo()) {
                 int dx = x - victima.getX();
                 int dy = y - victima.getY();
-                // Fix #2: sin sqrt
+                
                 if (dx * dx + dy * dy <= 50 * 50) return true;
             }
         }
@@ -337,7 +337,7 @@ public class Jugador extends Personaje {
                 int by = victima.getYMuerte() == 0 ? victima.getY() : victima.getYMuerte();
                 int dx = x - bx;
                 int dy = y - by;
-                // Fix #2: sin sqrt
+                
                 if (dx * dx + dy * dy <= 80 * 80) return true;
             }
         }
