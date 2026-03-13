@@ -41,85 +41,57 @@ public class Mapa {
         this.obstaculos    = new ArrayList<>();
         this.alcantarillas = new ArrayList<>();
         this.botones       = new ArrayList<>();
+        // Fix #2: Eliminar llamadas duplicadas — antes se llamaba 2 veces a cada uno
         cargarImagenFondo(nombreArchivoTmj);
         crearMapaPrueba();
-        
-        cargarImagenFondo(nombreArchivoTmj);
-        
-        crearMapaPrueba();
-        
-       CargadorNivel cargador = new CargadorNivel("src/main/resources/" + nombreArchivoTmj);
-      
+
+        CargadorNivel cargador = new CargadorNivel("src/main/resources/" + nombreArchivoTmj);
+
         for (java.awt.geom.Rectangle2D.Double rectDouble : cargador.getColisiones()) {
-            Rectangle rectNormal = new Rectangle(
-                (int) rectDouble.x, 
-                (int) rectDouble.y, 
-                (int) rectDouble.width, 
-                (int) rectDouble.height
-            );
-            this.obstaculos.add(rectNormal);
+            obstaculos.add(new Rectangle(
+                (int) rectDouble.x, (int) rectDouble.y,
+                (int) rectDouble.width, (int) rectDouble.height));
         }
         for (java.awt.geom.Rectangle2D.Double rectDouble : cargador.getAlcantarillas()) {
-            Rectangle rectNormal = new Rectangle(
-                (int) rectDouble.x, 
-                (int) rectDouble.y, 
-                (int) rectDouble.width, 
-                (int) rectDouble.height
-            );
-            this.alcantarillas.add(rectNormal);
+            alcantarillas.add(new Rectangle(
+                (int) rectDouble.x, (int) rectDouble.y,
+                (int) rectDouble.width, (int) rectDouble.height));
         }
         for (java.awt.geom.Rectangle2D.Double rectDouble : cargador.getBotonesEmergencia()) {
-            Rectangle rectNormal = new Rectangle(
-                (int) rectDouble.x, 
-                (int) rectDouble.y, 
-                (int) rectDouble.width, 
-                (int) rectDouble.height
-            );
-            this.botones.add(rectNormal);
+            botones.add(new Rectangle(
+                (int) rectDouble.x, (int) rectDouble.y,
+                (int) rectDouble.width, (int) rectDouble.height));
         }
-      
     }
     
       
     private void cargarImagenFondo(String nombreArchivoTmj) throws IOException {
-        
+        // Fix #2: Normalizar la clave de caché a siempre usar la extensión .png
         String nombreImagen = nombreArchivoTmj.replace(".tmj", ".png");
-        
+
+        // Revisamos caché con la clave normalizada
         if (cacheImagenes.containsKey(nombreImagen)) {
             imagenFondo = cacheImagenes.get(nombreImagen);
             return;
         }
-            
-       
-        try {
-            File archivoImagen = new File("mapa/" + nombreImagen);
-        
-            if (archivoImagen.exists()) {
-                imagenFondo = javax.imageio.ImageIO.read(archivoImagen);
-                cacheImagenes.put(nombreImagen, imagenFondo);
+
+        // Intentar cargar desde el sistema de archivos o classpath
+        File archivoImagen = new File("mapa/" + nombreImagen);
+        if (archivoImagen.exists()) {
+            imagenFondo = ImageIO.read(archivoImagen);
+        } else {
+            java.net.URL u = getClass().getClassLoader().getResource(nombreImagen);
+            if (u != null) {
+                imagenFondo = ImageIO.read(u);
             } else {
-                System.out.println("¡Aviso! No se encontró la imagen en: " + archivoImagen.getAbsolutePath());
+                System.err.println("No se encontró el archivo del mapa: " + nombreImagen);
             }
-        } catch (java.io.IOException e) {
-            System.out.println("Error al cargar la imagen del mapa: " + e.getMessage());
         }
-        
-            File f = new File("mapa/" + nombreArchivoTmj);
-            if (f.exists()) {
-                imagenFondo = ImageIO.read(f);
-            } else {
-                java.net.URL u = getClass().getClassLoader().getResource(nombreArchivoTmj);
-                if (u != null) {
-                    imagenFondo = ImageIO.read(u);
-                } else {
-                    System.err.println("No se encontró el archivo del mapa: " + nombreArchivoTmj);
-                }
-            }
-            // Guardar en caché para reutilización
-            if (imagenFondo != null) {
-                cacheImagenes.put(nombreArchivoTmj, imagenFondo);
-            }
-             
+
+        // Guardar en caché con la clave normalizada
+        if (imagenFondo != null) {
+            cacheImagenes.put(nombreImagen, imagenFondo);
+        }
     }
     private void crearMapaPrueba() {
         // --- Bordes ---
@@ -139,12 +111,22 @@ public class Mapa {
 
     /**
      * @param modoDesarrollador si es true dibuja las hitboxes de obstáculos y alcantarillas.
-     *                          PanelJuego lo obtiene de su instancia de ManejadorEntrada.
+     *
+     * @param camX coordenada X de la cámara (esquina superior izquierda del viewport en el mundo)
+     * @param camY coordenada Y de la cámara
+     * @param viewportW ancho del viewport visible (ej. 800)
+     * @param viewportH alto del viewport visible (ej. 600)
      */
-    public void render(Graphics g, boolean modoDesarrollador) {
-        // Fondo: imagen real o gris de respaldo (Restaurado al original completo)
+    public void render(Graphics g, boolean modoDesarrollador, int camX, int camY, int viewportW, int viewportH) {
         if (imagenFondo != null) {
-            g.drawImage(imagenFondo, 0, 0, null);
+            // Fix #6: Viewport clipping — solo dibujamos la porción visible del mapa.
+            // drawImage(img, dx1,dy1,dx2,dy2, sx1,sy1,sx2,sy2, observer)
+            // Destino: esquina (0,0) → (viewportW, viewportH) en pantalla
+            // Fuente: región (camX, camY) → (camX+viewportW, camY+viewportH) en el mapa
+            g.drawImage(imagenFondo,
+                0, 0, viewportW, viewportH,          // destino (pantalla)
+                camX, camY, camX + viewportW, camY + viewportH, // fuente (mapa)
+                null);
         } else {
             g.setColor(Color.GRAY);
             g.fillRect(0, 0, ancho, alto);
@@ -174,9 +156,47 @@ public class Mapa {
         }
     }
 
-    /** Retorna true si rectFuturo choca con alguna pared. */
+    /** Compatibilidad: render sin viewport (dibuja el mapa completo, como antes) */
+    public void render(Graphics g, boolean modoDesarrollador) {
+        if (imagenFondo != null) {
+            g.drawImage(imagenFondo, 0, 0, null);
+        } else {
+            g.setColor(Color.GRAY);
+            g.fillRect(0, 0, ancho, alto);
+        }
+        for (Rectangle vent : alcantarillas) {
+            g.setColor(new Color(50, 50, 50));
+            g.fillRect(vent.x, vent.y, vent.width, vent.height);
+            g.setColor(Color.WHITE);
+            g.drawRect(vent.x, vent.y, vent.width, vent.height);
+            g.drawLine(vent.x + 10, vent.y, vent.x + 10, vent.y + vent.height);
+            g.drawLine(vent.x + 30, vent.y, vent.x + 30, vent.y + vent.height);
+            g.drawLine(vent.x + 50, vent.y, vent.x + 50, vent.y + vent.height);
+        }
+        if (modoDesarrollador) {
+            g.setColor(new Color(255, 0, 0, 150));
+            for (Rectangle obs : obstaculos) g.fillRect(obs.x, obs.y, obs.width, obs.height);
+            g.setColor(new Color(0, 0, 255, 150));
+            for (Rectangle vent : alcantarillas) g.fillRect(vent.x, vent.y, vent.width, vent.height);
+        }
+    }
+
+    /**
+     * Fix #7: Colisiones con filtrado espacial.
+     * Solo evalúa obstáculos dentro de un radio de 200px del centro del rectángulo futuro,
+     * evitando iterar cientos de obstáculos lejanos en cada frame.
+     */
     public boolean hayColision(Rectangle rectFuturo) {
+        int cx = rectFuturo.x + rectFuturo.width  / 2;
+        int cy = rectFuturo.y + rectFuturo.height / 2;
+        final int RADIO_FILTRADO = 200;
         for (Rectangle obs : obstaculos) {
+            // Filtrado espacial: solo procesar obstáculos cercanos
+            int ox = obs.x + obs.width  / 2;
+            int oy = obs.y + obs.height / 2;
+            int dx = cx - ox;
+            int dy = cy - oy;
+            if (dx * dx + dy * dy > RADIO_FILTRADO * RADIO_FILTRADO) continue;
             if (obs.intersects(rectFuturo)) return true;
         }
         return false;

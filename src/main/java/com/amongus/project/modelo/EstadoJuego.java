@@ -28,10 +28,12 @@ public class EstadoJuego {
     // GANADOR DE LA PARTIDA (Se asigna al finalizar)
     private String mensajeGanador = "";
 
-    public EstadoJuego() throws IOException {
+    public EstadoJuego() {
         jugadores = new ArrayList<>();
         faseActual = Fase.MENU;
-        mapa = new Mapa("mapa1.tmj");
+        // Fix #8: Lazy loading — el mapa se asigna con setMapa() cuando el servidor envíe JUEGO_INICIADO.
+        // Antes se cargaba aquí aunque el jugador estuviera en el menú (desperdiciando I/O y CPU).
+        mapa = null;
     }
     
     // Getters y Setters para sabotajes
