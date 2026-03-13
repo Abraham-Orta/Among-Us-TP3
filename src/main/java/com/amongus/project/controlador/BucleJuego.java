@@ -496,6 +496,16 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private void finalizarTareaEnJuego(String nombreTarea, JDialog dialogo) {
         System.out.println("Tarea finalizada exitosamente: " + nombreTarea);
         
+        // Si es la tarea de calibrar y las luces están saboteadas, enviamos el comando para restaurarlas
+        if (nombreTarea.equals("calibrar") && estado.areLucesSaboteadas()) {
+            if (clienteRed != null) {
+                clienteRed.enviarMensaje("SABOTAJE:LUCES:OFF");
+            } else {
+                // Modo offline / local
+                estado.setLucesSaboteadas(false);
+            }
+        }
+
         // 1. Marcar como completada localmente
         Jugador local = estado.getJugadorLocal();
         if (local != null) {

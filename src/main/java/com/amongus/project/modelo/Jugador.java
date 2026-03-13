@@ -205,7 +205,13 @@ public class Jugador extends Personaje {
     private void ejecutarSabotaje() {
         if (clienteRed != null) {
             boolean actual = estadoJuego.areLucesSaboteadas();
-            clienteRed.enviarMensaje(actual ? "SABOTAJE:LUCES:OFF" : "SABOTAJE:LUCES:ON");
+            // Solo permitimos activar el sabotaje si no está ya activo.
+            // La reparación se hará completando la tarea "calibrar".
+            if (!actual) {
+                clienteRed.enviarMensaje("SABOTAJE:LUCES:ON");
+            } else {
+                return; // Ya está saboteado, no hacemos nada
+            }
         } else {
             estadoJuego.setLucesSaboteadas(!estadoJuego.areLucesSaboteadas());
         }
@@ -264,8 +270,11 @@ public class Jugador extends Personaje {
 
         for (TareaMapa tarea : mapa.getTareasDisponibles()) {
             if (this.hitbox.intersects(tarea.getZona())) {
-                // Verificar si el jugador tiene esta tarea pendiente o si es impostor fingiendo
-                if (tareasPendientes.contains(tarea.getNombre()) || impostor) {
+                // Verificar si el jugador tiene esta tarea pendiente, si es impostor fingiendo,
+                // o si es la tarea de calibrar y las luces están saboteadas (REPARACIÓN).
+                if (tareasPendientes.contains(tarea.getNombre()) || impostor || 
+                    (tarea.getNombre().equals("calibrar") && estadoJuego.areLucesSaboteadas())) {
+                    
                     estadoJuego.setTareaAabrir(tarea.getNombre());
                     cooldownTarea = 60; // 1 segundo de cooldown
                     break;
