@@ -1,5 +1,5 @@
 package com.amongus.project.vista;
-
+ 
 import javax.swing.JPanel;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -14,6 +14,7 @@ import java.awt.GradientPaint;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.BasicStroke;
+import java.awt.Stroke;
 import java.awt.AlphaComposite;
 import java.awt.Shape;
 import java.awt.geom.AffineTransform;
@@ -35,7 +36,7 @@ import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
 import com.amongus.project.modelo.Mapa;
 import com.amongus.project.controlador.ManejadorEntrada;
-
+ 
 /**
  * PanelJuego
  * ==========
@@ -46,6 +47,24 @@ import com.amongus.project.controlador.ManejadorEntrada;
  * controlan a jugadores distintos de forma independiente.
  */
 public class PanelJuego extends JPanel {
+
+    // ---- Constantes de renderizado (evitan crear objetos por frame) ----
+    private static final Color COLOR_TAREA_FILL      = new Color(255, 255,   0,  80);
+    private static final Color COLOR_TAREA_BORDE     = new Color(255, 255, 100, 180);
+    private static final Color COLOR_BARRA_FONDO     = new Color( 30,  30,  30, 220);
+    private static final Color COLOR_BARRA_INICIO    = new Color(  0, 150,   0);
+    private static final Color COLOR_BARRA_FIN       = new Color(  0, 255,   0);
+    private static final Color COLOR_LISTA_SOMBRA    = new Color(  0,   0,   0, 120);
+    private static final Color COLOR_LISTA_TITULO    = new Color(255, 255, 100);
+    private static final Color COLOR_LISTA_COMPLETADA= new Color(  0, 255,   0, 180);
+    private static final Color COLOR_VISOR           = new Color(150, 200, 220);
+    private static final Color COLOR_PENUMBRA_TRANS  = new Color(  0,   0,   0,   0);
+    private static final Color COLOR_PENUMBRA_OPACO  = new Color(  0,   0,   0, 255);
+    private static final Color COLOR_BRILLO_IMP      = new Color(255,   0,   0, 150);
+    private static final Color COLOR_BRILLO_TRIP     = new Color(  0, 255, 255,  90);
+    private static final Color COLOR_TRANSPARENTE    = new Color(  0,   0,   0,   0);
+    private static final Font  FONT_TAREA_LABEL      = new Font("Arial", Font.BOLD, 14);
+    private static final Stroke STROKE_BORDE_3       = new BasicStroke(3);
 
     private PantallaVotacion pantallaVotacion;
 
@@ -336,13 +355,13 @@ public class PanelJuego extends JPanel {
 
             // Tema visual
             Color colorTexto = gananImpostores ? Color.RED : Color.CYAN;
-            Color colorBrillo = gananImpostores ? new Color(255, 0, 0, 150) : new Color(0, 255, 255, 90);
+            Color colorBrillo = gananImpostores ? COLOR_BRILLO_IMP : COLOR_BRILLO_TRIP;
 
             // Resplandor de fondo
             int centroX = getWidth() / 2;
             int centroY = getHeight() / 2;
             float radio = Math.max(getWidth(), getHeight()) * 0.6f;
-            RadialGradientPaint resplandor = new RadialGradientPaint(centroX, centroY, radio, new float[]{0.0f, 1.0f}, new Color[]{colorBrillo, new Color(0, 0, 0, 0)});
+            RadialGradientPaint resplandor = new RadialGradientPaint(centroX, centroY, radio, new float[]{0.0f, 1.0f}, new Color[]{colorBrillo, COLOR_TRANSPARENTE});
             g2d.setPaint(resplandor);
             g2d.fillRect(0, 0, getWidth(), getHeight());
             g2d.setPaint(null);
@@ -489,11 +508,10 @@ public class PanelJuego extends JPanel {
                 float radio = Math.max(getWidth(), getHeight()) * 0.6f; 
                 
                 // Color rojo semi-transparente si es impostor, cyan si es tripulante
-                Color colorBrillo = local.isImpostor() ? new Color(255, 0, 0, 150) : new Color(0, 255, 255, 90);
-                Color colorBorde = new Color(0, 0, 0, 0);
+                Color colorBrillo = local.isImpostor() ? COLOR_BRILLO_IMP : COLOR_BRILLO_TRIP;
 
                 float[] fracciones = {0.0f, 1.0f};
-                RadialGradientPaint resplandor = new RadialGradientPaint(centroX, centroY, radio, fracciones, new Color[]{colorBrillo, colorBorde});
+                RadialGradientPaint resplandor = new RadialGradientPaint(centroX, centroY, radio, fracciones, new Color[]{colorBrillo, COLOR_TRANSPARENTE});
 
                 g2d.setPaint(resplandor);
                 g2d.fillRect(0, 0, getWidth(), getHeight());
@@ -802,14 +820,14 @@ public class PanelJuego extends JPanel {
                 Rectangle r = tarea.getZona();
                 // Solo dibujamos si el jugador local tiene esta tarea pendiente o es impostor
                 if (local != null && (local.getTareasPendientes().contains(tarea.getNombre()) || local.isImpostor())) {
-                    g2d.setColor(new Color(255, 255, 0, 80)); // Amarillo suave
+                    g2d.setColor(COLOR_TAREA_FILL);
                     g2d.fillRect(r.x, r.y, r.width, r.height);
-                    g2d.setColor(new Color(255, 255, 100, 180)); // Borde brillante
-                    g2d.setStroke(new BasicStroke(3));
+                    g2d.setColor(COLOR_TAREA_BORDE);
+                    g2d.setStroke(STROKE_BORDE_3);
                     g2d.drawRect(r.x, r.y, r.width, r.height);
                     
                     // Texto pequeño con el nombre de la tarea
-                    g2d.setFont(new Font("Arial", Font.BOLD, 14));
+                    g2d.setFont(FONT_TAREA_LABEL);
                     g2d.setColor(Color.WHITE);
                     g2d.drawString("TAREA", r.x, r.y - 5);
                 }
@@ -946,17 +964,17 @@ public class PanelJuego extends JPanel {
 
             // Agregamos un borde suave (penumbra) en el arco de visión
             Graphics2D g2soft = (Graphics2D) g.create();
-            java.awt.RadialGradientPaint bordeDifuminado = new java.awt.RadialGradientPaint(
-                new Point2D.Float(luzRealX, luzRealY), radioLuz,
-                new float[]{0.8f, 1.0f},
-                new Color[]{
-                    new Color(0, 0, 0, 0),
-                    new Color(0, 0, 0, 255)
-                }
-            );
-            g2soft.setPaint(bordeDifuminado);
-            g2soft.fill(circuloLuz);
-            g2soft.dispose();
+            try {
+                java.awt.RadialGradientPaint bordeDifuminado = new java.awt.RadialGradientPaint(
+                    new Point2D.Float(luzRealX, luzRealY), radioLuz,
+                    new float[]{0.8f, 1.0f},
+                    new Color[]{COLOR_PENUMBRA_TRANS, COLOR_PENUMBRA_OPACO}
+                );
+                g2soft.setPaint(bordeDifuminado);
+                g2soft.fill(circuloLuz);
+            } finally {
+                g2soft.dispose();
+            }
 
             g2d.translate(-camX, -camY); // volver al estado normal
         }
@@ -977,6 +995,7 @@ public class PanelJuego extends JPanel {
         if (local == null) return;
 
         Graphics2D g2 = (Graphics2D) g.create();
+        try {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         
         int x = 20;
@@ -990,7 +1009,7 @@ public class PanelJuego extends JPanel {
         int barW = 300;
         int barH = 25;
         // Fondo de la barra
-        g2.setColor(new Color(30, 30, 30, 220));
+        g2.setColor(COLOR_BARRA_FONDO);
         g2.fillRoundRect(x, y - 15, barW, barH, 12, 12);
         
         String progreso = estadoJuego.getProgresoTareas();
@@ -1001,13 +1020,13 @@ public class PanelJuego extends JPanel {
             if (totales > 0) {
                 int filledW = (int) (barW * ((double) actuales / totales));
                 // Gradiente verde para la barra
-                g2.setPaint(new GradientPaint(x, 0, new Color(0, 150, 0), x + filledW, 0, new Color(0, 255, 0)));
+                g2.setPaint(new GradientPaint(x, 0, COLOR_BARRA_INICIO, x + filledW, 0, COLOR_BARRA_FIN));
                 g2.fillRoundRect(x, y - 15, filledW, barH, 12, 12);
             }
         } catch (Exception e) {}
         
         g2.setColor(Color.WHITE);
-        g2.setStroke(new BasicStroke(3));
+        g2.setStroke(STROKE_BORDE_3);
         g2.drawRoundRect(x, y - 15, barW, barH, 12, 12);
         
         // --- 2. LISTA DE TAREAS LOCALES ---
@@ -1017,12 +1036,12 @@ public class PanelJuego extends JPanel {
         int numTareas = local.getTareasPendientes().size() + local.getTareasCompletadas().size();
         // System.out.println("Dibujando HUD: Tareas en Jugador = " + numTareas); // Log de depuración
         if (numTareas > 0) {
-            g2.setColor(new Color(0, 0, 0, 120));
+            g2.setColor(COLOR_LISTA_SOMBRA);
             g2.fillRoundRect(x - 5, y - 25, 260, 40 + (numTareas * 25), 15, 15);
         }
 
         g2.setFont(cargarFuente(22f));
-        g2.setColor(new Color(255, 255, 100)); // Amarillo para el título "Tareas"
+        g2.setColor(COLOR_LISTA_TITULO);
         g2.drawString("TAREAS", x, y);
         y += 30;
         
@@ -1041,7 +1060,7 @@ public class PanelJuego extends JPanel {
         // Tareas Completadas (Verde)
         g2.setFont(cargarFuente(18f));
         for (String t : local.getTareasCompletadas()) {
-            g2.setColor(new Color(0, 255, 0, 180));
+            g2.setColor(COLOR_LISTA_COMPLETADA);
             g2.drawString("✔ " + formatearNombreTarea(t), x + 10, y);
             y += 25;
         }
@@ -1060,7 +1079,9 @@ public class PanelJuego extends JPanel {
             y += 25;
         }
         
-        g2.dispose();
+        } finally {
+            g2.dispose();
+        }
     }
 
     private String formatearNombreTarea(String id) {
@@ -1286,6 +1307,7 @@ public class PanelJuego extends JPanel {
         BufferedImage spriteActual = obtenerSpriteColoreado(rutaMolde, j.getColor(), claveCache);
 
         Graphics2D g2d = (Graphics2D) g.create();
+        try {
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2d.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
 
@@ -1326,7 +1348,7 @@ public class PanelJuego extends JPanel {
             g2d.fillRoundRect(baseX, baseY, 30, 40, 15, 15);
             g2d.fillRect(baseX, baseY + 40 - 5, 10, 15);
             g2d.fillRect(baseX + 30 - 10, baseY + 40 - 5, 10, 15);
-            g2d.setColor(new Color(150, 200, 220));
+            g2d.setColor(COLOR_VISOR);
             if (dir == 1) g2d.fillRoundRect(baseX + 15, baseY + 10, 18, 12, 5, 5);
             else          g2d.fillRoundRect(baseX - 3,  baseY + 10, 18, 12, 5, 5);
         }
@@ -1363,7 +1385,9 @@ public class PanelJuego extends JPanel {
             g2d.drawString("[Q] Matar | [H] Luces", baseX - 30, baseY + 65);
         }
         
-        g2d.dispose();
+        } finally {
+            g2d.dispose();
+        }
     }
 
     private void actualizarBoton(Jugador local) {

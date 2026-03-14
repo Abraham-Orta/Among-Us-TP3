@@ -3,6 +3,7 @@ package com.amongus.project.controlador;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.swing.SwingUtilities;
 import com.amongus.project.modelo.EstadoJuego;
 import com.amongus.project.modelo.Jugador;
@@ -29,12 +30,13 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     private int tripulantesConTareasListas = 0;
     private int framesRevelacion = 0; // contador para la pantalla inicial
     private boolean finalizando = false; // Flag para evitar múltiples llamadas al terminar el juego
+    private final AtomicBoolean repaintPendiente = new AtomicBoolean(false);
     private boolean interfazTareaAbierta = false; 
 
     private final int  FPS            = 60;
     private final long TIEMPO_OBJETIVO = 1_000_000_000L / FPS;
 
-    // Fix #7: ScheduledExecutorService para las muertes (no crear un thread por muerte)
+    //  ScheduledExecutorService para las muertes (no crear un thread por muerte)
     private static final ScheduledExecutorService sfxExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "SfxDelayThread");
         t.setDaemon(true);
@@ -62,7 +64,7 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     @Override
     public void onMensajeRecibido(String mensaje) {
         if (mensaje.startsWith("BATCH_MOVER:")) {
-            // Fix servidor #2: Desempaquetar batch de posiciones.
+            // servidor  Desempaquetar batch de posiciones.
             // Formato: BATCH_MOVER:nombre1,x1,y1|nombre2,x2,y2|...
             try {
                 String[] entradas = mensaje.substring(12).split("\\|");
@@ -118,8 +120,8 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
                     // musica de fondo para la cinematica con el volumen bajito (-10 decibelios)
                     com.amongus.project.vista.ReproductorMusica.reproducirEfectoConVolumen("impostor_killMusic.wav", -10.0f);
                     
-                    // Fix #7: programar el sonido en el scheduler en vez de crear new Thread().start()
-                    // Fix #7: programar el sonido en el scheduler en vez de crear new Thread().start()
+                    
+                    // programar el sonido en el scheduler en vez de crear new Thread().start()
                     sfxExecutor.schedule(() -> com.amongus.project.vista.ReproductorMusica.reproducirEfecto("Kill.wav"), 
                         480, TimeUnit.MILLISECONDS);
                 }
@@ -476,7 +478,12 @@ public class BucleJuego implements Runnable, Cliente.MensajeListener {
     }
 
     private void renderizar() {
-        if (panelJuego != null) SwingUtilities.invokeLater(panelJuego::repaint);
+        if (panelJuego != null && repaintPendiente.compareAndSet(false, true)) {
+            SwingUtilities.invokeLater(() -> {
+                repaintPendiente.set(false);
+                panelJuego.repaint();
+            });
+        }
     }
 
     private void abrirInterfazTarea(String nombreTarea) {

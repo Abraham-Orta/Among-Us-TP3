@@ -1257,13 +1257,13 @@
                  "y":1368.12411847673
                 }, 
                 {
-                 "height":0,
+                 "height":50,
                  "id":132,
                  "name":"energia",
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":0,
+                 "width":50,
                  "x":1585.33145275035,
                  "y":657.263751763047
                 }],
