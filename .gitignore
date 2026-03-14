@@ -14,6 +14,11 @@
 *.jar
 *.war
 *.ear
+.rar
+*.zip
+*.pdf
+*.tar.gz
+*.rar
 
 # NetBeans specific
 /nbproject/private/
